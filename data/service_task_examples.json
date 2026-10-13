@@ -1,0 +1,1787 @@
+{
+ "generated_at": "2026-10-12T19:53:45+05:00",
+ "source": "600 newest Fleetio service entries (created 2026-09-10 .. 2026-10-11): the 'For:' text in the notes -> service task the staff chose",
+ "entries": 521,
+ "task_usage": {
+  "26916002": 95,
+  "43827995": 48,
+  "26915982": 40,
+  "43827996": 35,
+  "33286027": 33,
+  "43827983": 29,
+  "26916073": 27,
+  "43828032": 26,
+  "26916098": 25,
+  "33286056": 22,
+  "26915981": 21,
+  "44133075": 19,
+  "26916206": 18,
+  "26916096": 17,
+  "26916013": 15,
+  "43827981": 12,
+  "43827989": 11,
+  "26916178": 10,
+  "44198144": 9,
+  "26916146": 8,
+  "26916103": 7,
+  "46388772": 5,
+  "26915938": 5,
+  "26916164": 5,
+  "26915994": 5,
+  "36416547": 5,
+  "33288495": 4,
+  "26916069": 4,
+  "26916209": 4,
+  "26916137": 4,
+  "26916175": 4,
+  "26915969": 4,
+  "44094013": 4,
+  "33286421": 4,
+  "26916204": 3,
+  "26916093": 3,
+  "36302935": 3,
+  "26916075": 3,
+  "40119427": 3,
+  "33286289": 3,
+  "43813204": 3,
+  "26915996": 2,
+  "33286072": 2,
+  "44131157": 2,
+  "26916250": 2,
+  "44337433": 2,
+  "26915922": 2,
+  "44927104": 2,
+  "26916138": 2,
+  "26916276": 2,
+  "26916165": 2,
+  "26916029": 2,
+  "26915972": 2,
+  "26915940": 2,
+  "44712742": 2,
+  "43831799": 2,
+  "43827992": 2,
+  "43989208": 2,
+  "44393603": 2,
+  "26916184": 2,
+  "33286367": 2,
+  "26916027": 2,
+  "44289586": 2,
+  "26915978": 2,
+  "26915937": 2,
+  "44130908": 2,
+  "33288522": 2,
+  "43939030": 2,
+  "33288659": 2,
+  "33288573": 1,
+  "26915930": 1,
+  "44981267": 1,
+  "26916004": 1,
+  "43827986": 1,
+  "26915956": 1,
+  "26916186": 1,
+  "26916232": 1,
+  "33288557": 1,
+  "26916216": 1,
+  "40066050": 1,
+  "43828038": 1,
+  "26916247": 1,
+  "26916049": 1,
+  "43827999": 1,
+  "50387590": 1,
+  "26916196": 1,
+  "26916153": 1,
+  "45019669": 1,
+  "40220570": 1,
+  "26915984": 1,
+  "26916249": 1,
+  "44197684": 1,
+  "26916261": 1,
+  "50410185": 1,
+  "45125580": 1,
+  "26915965": 1,
+  "26916223": 1,
+  "34715356": 1,
+  "36032747": 1,
+  "35694296": 1,
+  "39974830": 1,
+  "33288729": 1,
+  "26916194": 1,
+  "33286067": 1,
+  "33288449": 1,
+  "45819668": 1,
+  "26915931": 1,
+  "26915943": 1,
+  "44163139": 1,
+  "33135860": 1,
+  "33134612": 1,
+  "50409169": 1,
+  "46516449": 1,
+  "33286258": 1,
+  "33288483": 1,
+  "26916168": 1,
+  "33288473": 1,
+  "33286307": 1,
+  "26916044": 1,
+  "26915947": 1,
+  "33288677": 1,
+  "36346080": 1,
+  "48265753": 1,
+  "48350088": 1,
+  "33288592": 1,
+  "44393592": 1,
+  "33286350": 1,
+  "36346086": 1,
+  "43919570": 1,
+  "26916148": 1,
+  "33288876": 1,
+  "33288666": 1,
+  "33286296": 1,
+  "44102384": 1,
+  "46263282": 1,
+  "44102388": 1,
+  "43960472": 1,
+  "33286302": 1,
+  "26916042": 1,
+  "33292302": 1,
+  "33286024": 1,
+  "33288527": 1,
+  "45558897": 1,
+  "27010440": 1,
+  "44156220": 1,
+  "46494408": 1,
+  "33135888": 1,
+  "35966513": 1,
+  "26916191": 1,
+  "33135794": 1,
+  "26915948": 1,
+  "44997769": 1,
+  "45534842": 1,
+  "26916104": 1,
+  "36285041": 1,
+  "47658588": 1,
+  "36032750": 1,
+  "33288536": 1,
+  "45696700": 1,
+  "46708435": 1,
+  "44922173": 1,
+  "26916118": 1
+ },
+ "examples": [
+  {
+   "key": "parking",
+   "for": "Trailer parking",
+   "tasks": {
+    "43827995": 47
+   }
+  },
+  {
+   "key": "tire replacement",
+   "for": "Trailer tire replacement",
+   "tasks": {
+    "26916002": 32
+   }
+  },
+  {
+   "key": "scale",
+   "for": "Scale",
+   "tasks": {
+    "43827996": 32
+   }
+  },
+  {
+   "key": "hotel",
+   "for": "Hotel",
+   "tasks": {
+    "43827983": 26
+   }
+  },
+  {
+   "key": "fuel",
+   "for": "Fuel",
+   "tasks": {
+    "33286056": 19,
+    "26915996": 2
+   }
+  },
+  {
+   "key": "pm service",
+   "for": "PM service",
+   "tasks": {
+    "26916073": 10,
+    "33286027": 9
+   }
+  },
+  {
+   "key": "padlock",
+   "for": "Padlock",
+   "tasks": {
+    "43828032": 8,
+    "36416547": 5
+   }
+  },
+  {
+   "key": "and wash",
+   "for": "Truck and trailer wash",
+   "tasks": {
+    "26916206": 13
+   }
+  },
+  {
+   "key": "tire repair",
+   "for": "Trailer tire repair",
+   "tasks": {
+    "44133075": 13
+   }
+  },
+  {
+   "key": "strap",
+   "for": "Straps",
+   "tasks": {
+    "43827989": 10
+   }
+  },
+  {
+   "key": "windshield replacement",
+   "for": "Windshield replacement",
+   "tasks": {
+    "26916178": 10
+   }
+  },
+  {
+   "key": "steer tire replacement",
+   "for": "Steer tires replacement",
+   "tasks": {
+    "26916002": 8,
+    "33288659": 1
+   }
+  },
+  {
+   "key": "drive tire replacement",
+   "for": "Truck drive tire replacement",
+   "tasks": {
+    "26916002": 7
+   }
+  },
+  {
+   "key": "dot inspection",
+   "for": "Trailer DOT inspection",
+   "tasks": {
+    "26915982": 7
+   }
+  },
+  {
+   "key": "dot",
+   "for": "DOT",
+   "tasks": {
+    "26915982": 7
+   }
+  },
+  {
+   "key": "coolant",
+   "for": "Coolant",
+   "tasks": {
+    "26916069": 3,
+    "26915956": 1,
+    "36285041": 1
+   }
+  },
+  {
+   "key": "wash",
+   "for": "Truck wash",
+   "tasks": {
+    "26916206": 5
+   }
+  },
+  {
+   "key": "abs repair",
+   "for": "Trailer ABS repairs",
+   "tasks": {
+    "26915981": 1,
+    "45019669": 1,
+    "33286307": 1,
+    "44094013": 1
+   }
+  },
+  {
+   "key": "engine oil",
+   "for": "Engine Oil",
+   "tasks": {
+    "33288495": 1,
+    "26916029": 1,
+    "45696700": 1
+   }
+  },
+  {
+   "key": "oil",
+   "for": "Oil",
+   "tasks": {
+    "33288495": 2,
+    "26916073": 1
+   }
+  },
+  {
+   "key": "mud flap installation",
+   "for": "Trailer mud flap installation",
+   "tasks": {
+    "44198144": 3
+   }
+  },
+  {
+   "key": "windshield wiper",
+   "for": "Windshield wiper",
+   "tasks": {
+    "26916204": 2,
+    "26916138": 1
+   }
+  },
+  {
+   "key": "tire replacement mount tire",
+   "for": "Trailer tire replacement, mount truck tire",
+   "tasks": {
+    "26916002": 3
+   }
+  },
+  {
+   "key": "locksmith",
+   "for": "Locksmith",
+   "tasks": {
+    "36302935": 3
+   }
+  },
+  {
+   "key": "oil change",
+   "for": "OIL CHANGE",
+   "tasks": {
+    "33286027": 2,
+    "26916073": 1
+   }
+  },
+  {
+   "key": "tire",
+   "for": "3 tires",
+   "tasks": {
+    "26916002": 3
+   }
+  },
+  {
+   "key": "emergence fuel",
+   "for": "Emergence fuel",
+   "tasks": {
+    "33286072": 1,
+    "33286056": 1
+   }
+  },
+  {
+   "key": "tire patch",
+   "for": "Trailer tire patch",
+   "tasks": {
+    "44133075": 2
+   }
+  },
+  {
+   "key": "light repair",
+   "for": "Trailer lights repair",
+   "tasks": {
+    "26916013": 2
+   }
+  },
+  {
+   "key": "towing deductible",
+   "for": "Towing deductible",
+   "tasks": {
+    "26916098": 2
+   }
+  },
+  {
+   "key": "emergance fuel",
+   "for": "Emergance fuel",
+   "tasks": {
+    "33286072": 1,
+    "33286056": 1
+   }
+  },
+  {
+   "key": "marker light replacement",
+   "for": "Trailer marker light replacement",
+   "tasks": {
+    "26916013": 2
+   }
+  },
+  {
+   "key": "axle alignment",
+   "for": "3 axle alignment",
+   "tasks": {
+    "26916146": 1,
+    "33288729": 1
+   }
+  },
+  {
+   "key": "winch out service",
+   "for": "Winch out service",
+   "tasks": {
+    "26916098": 2
+   }
+  },
+  {
+   "key": "coolant pressure test",
+   "for": "COOLANT PRESSURE TEST",
+   "tasks": {
+    "26915981": 2
+   }
+  },
+  {
+   "key": "windshield washer fluid",
+   "for": "Windshield washer fluid",
+   "tasks": {
+    "26916137": 2
+   }
+  },
+  {
+   "key": "suspension inspection",
+   "for": "Truck suspension inspection",
+   "tasks": {
+    "26916153": 1,
+    "26916261": 1
+   }
+  },
+  {
+   "key": "flight",
+   "for": "Flight",
+   "tasks": {
+    "43827981": 2
+   }
+  },
+  {
+   "key": "rs forced regen",
+   "for": "RS for forced regen",
+   "tasks": {
+    "26916098": 2
+   }
+  },
+  {
+   "key": "plane ticket driver paid via card",
+   "for": "Plane Ticket for New Drivers Paid via Card: 0557",
+   "tasks": {
+    "43827992": 1,
+    "43827981": 1
+   }
+  },
+  {
+   "key": "steer tire replacement and balancing",
+   "for": "Steer tires replacement and balancing",
+   "tasks": {
+    "26916002": 1,
+    "33286421": 1
+   }
+  },
+  {
+   "key": "parking and glove",
+   "for": "Parking and gloves",
+   "tasks": {
+    "43828032": 1
+   }
+  },
+  {
+   "key": "padlock and plier",
+   "for": "Padlock and pliers",
+   "tasks": {
+    "43828032": 1
+   }
+  },
+  {
+   "key": "tail light bulb",
+   "for": "Tail light bulb",
+   "tasks": {
+    "26916013": 1
+   }
+  },
+  {
+   "key": "gladhand lock",
+   "for": "Gladhand lock",
+   "tasks": {
+    "43828032": 1
+   }
+  },
+  {
+   "key": "scale weigh",
+   "for": "scale weigh",
+   "tasks": {
+    "43827996": 1
+   }
+  },
+  {
+   "key": "road service to fix drive tire",
+   "for": "Road service to fix truck drive tire",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "mcm replacement and drive shaft installation",
+   "for": "MCM replacement and drive shaft installation",
+   "tasks": {
+    "44131157": 1
+   }
+  },
+  {
+   "key": "batterie",
+   "for": "Batteries",
+   "tasks": {
+    "43828032": 1
+   }
+  },
+  {
+   "key": "flight ticket",
+   "for": "Flight ticket",
+   "tasks": {
+    "43827981": 1
+   }
+  },
+  {
+   "key": "rs coolant supply tube assembly replacement and coolant",
+   "for": "RS for Coolant Supply Tube Assembly replacement and coolant",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "replace air dry air fitting fitting adapter drain air tank grease",
+   "for": "REPLACE AIR DRY, AIR FITTING, FITTING ADAPTER, DRAIN AIR TANK, GREASE TRUCK",
+   "tasks": {
+    "46388772": 1
+   }
+  },
+  {
+   "key": "triple axle alignment",
+   "for": "Triple axle alignment",
+   "tasks": {
+    "26916146": 1
+   }
+  },
+  {
+   "key": "left steer tire replacement",
+   "for": "Left steer tire replacement",
+   "tasks": {
+    "26916002": 1
+   }
+  },
+  {
+   "key": "tire replacement by rs",
+   "for": "Trailer tire replacement by RS",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "diagnosed by rs",
+   "for": "truck diagnosed by RS",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "rs tire patch",
+   "for": "RS for trailer tire patch",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "flight home",
+   "for": "Flight home",
+   "tasks": {
+    "43827981": 1
+   }
+  },
+  {
+   "key": "safety triangle",
+   "for": "safety triangles",
+   "tasks": {
+    "43828032": 1
+   }
+  },
+  {
+   "key": "in airline replacement",
+   "for": "3 in 1 airlines replacement",
+   "tasks": {
+    "33288573": 1
+   }
+  },
+  {
+   "key": "company decal",
+   "for": "Company decals",
+   "tasks": {
+    "26915930": 1
+   }
+  },
+  {
+   "key": "triple axle alignment balancing grease",
+   "for": "Triple axle alignment, balancing, grease",
+   "tasks": {
+    "26916146": 1
+   }
+  },
+  {
+   "key": "road service glad handle replacement",
+   "for": "Road Service for trailer 1222 glad handle replacement",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "pm freon leak fixed wheel seal and brake cleaner replacement",
+   "for": "PM, Freon leak fixed, wheel seal and brake cleaner replacement",
+   "tasks": {
+    "26916073": 1
+   }
+  },
+  {
+   "key": "drive tire repair",
+   "for": "drive tire repair",
+   "tasks": {
+    "44133075": 1
+   }
+  },
+  {
+   "key": "air bag replacement",
+   "for": "Trailer 44316 air bag replacement",
+   "tasks": {
+    "26916004": 1
+   }
+  },
+  {
+   "key": "checked flat tire and fixed valve",
+   "for": "Checked flat tire and fixed valve",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "pm service and headlight connector",
+   "for": "PM service and headlight connector",
+   "tasks": {
+    "26916073": 1
+   }
+  },
+  {
+   "key": "fuel pump driveline bolt fuel pump core replacement",
+   "for": "FUEL PUMP, , DRIVELINE BOLTS, FUEL PUMP CORE replacement",
+   "tasks": {
+    "26915922": 1
+   }
+  },
+  {
+   "key": "coolant sensor",
+   "for": "Coolant sensor",
+   "tasks": {
+    "44927104": 1
+   }
+  },
+  {
+   "key": "lyft",
+   "for": "LYFT",
+   "tasks": {
+    "43827986": 1
+   }
+  },
+  {
+   "key": "air tag replacement",
+   "for": "Trailer air tag replacement",
+   "tasks": {
+    "43828032": 1
+   }
+  },
+  {
+   "key": "top marker light replacement",
+   "for": "Trailer top marker light replacement",
+   "tasks": {
+    "26916013": 1
+   }
+  },
+  {
+   "key": "pm service and grease",
+   "for": "PM service and truck grease",
+   "tasks": {
+    "26916073": 1
+   }
+  },
+  {
+   "key": "wind deflector bracket repair",
+   "for": "Trailer wind deflector bracket repair",
+   "tasks": {
+    "33288557": 1
+   }
+  },
+  {
+   "key": "washer fluid and bulb",
+   "for": "Washer fluid and bulb",
+   "tasks": {
+    "26916137": 1
+   }
+  },
+  {
+   "key": "steer axle wheel seal leak repair",
+   "for": "steer axle wheel seal leak repair",
+   "tasks": {
+    "26916276": 1
+   }
+  },
+  {
+   "key": "gasket oil",
+   "for": "gasket oil",
+   "tasks": {
+    "26916029": 1
+   }
+  },
+  {
+   "key": "printing",
+   "for": "printing",
+   "tasks": {
+    "43828038": 1
+   }
+  },
+  {
+   "key": "air leak repair",
+   "for": "Trailer# 562346 air leak repair",
+   "tasks": {
+    "26916247": 1
+   }
+  },
+  {
+   "key": "wire and plug connection repair",
+   "for": "Trailer# 555491 Wires and plug connection repair",
+   "tasks": {
+    "26916049": 1
+   }
+  },
+  {
+   "key": "road service and driver tire replacement",
+   "for": "Road service and driver tire replacement",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "abs diagnosed",
+   "for": "Trailer ABS diagnosed",
+   "tasks": {
+    "26915981": 1
+   }
+  },
+  {
+   "key": "tire and air hose replacement by rs",
+   "for": "2 Trailer tires and air hose replacement by RS",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "tire replacement tire disposal mount tire",
+   "for": "2 Trailer tires replacement, tire disposal, mount truck tire",
+   "tasks": {
+    "26916002": 1
+   }
+  },
+  {
+   "key": "spare tire installation",
+   "for": "Trailer spare tires installation",
+   "tasks": {
+    "26916002": 1
+   }
+  },
+  {
+   "key": "abs light diagnostic",
+   "for": "Trailer ABS light diagnostics",
+   "tasks": {
+    "26915981": 1
+   }
+  },
+  {
+   "key": "tail light repair",
+   "for": "Tail light repair",
+   "tasks": {
+    "26916013": 1
+   }
+  },
+  {
+   "key": "tail light",
+   "for": "Truck tail lights",
+   "tasks": {
+    "26916013": 1
+   }
+  },
+  {
+   "key": "locksmith king pin lock",
+   "for": "Locksmith for trailer king pin lock",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "clearance light repair",
+   "for": "Trailer# 1224 Clearance light repair",
+   "tasks": {
+    "26916013": 1
+   }
+  },
+  {
+   "key": "abs module ecu replacement",
+   "for": "Abs module ECU replacement",
+   "tasks": {
+    "26915972": 1
+   }
+  },
+  {
+   "key": "tire change",
+   "for": "Trailer 1201 tire change",
+   "tasks": {
+    "26916002": 1
+   }
+  },
+  {
+   "key": "drive tire change",
+   "for": "Drive tire change",
+   "tasks": {
+    "26916002": 1
+   }
+  },
+  {
+   "key": "tire replacemnet",
+   "for": "Trailer# 43501 tire replacemnet",
+   "tasks": {
+    "26916002": 1
+   }
+  },
+  {
+   "key": "transloading freight",
+   "for": "Transloading the freight",
+   "tasks": {
+    "50387590": 1
+   }
+  },
+  {
+   "key": "bolt cutter",
+   "for": "bolt cutters",
+   "tasks": {
+    "43828032": 1
+   }
+  },
+  {
+   "key": "inspection",
+   "for": "Trailer inspection",
+   "tasks": {
+    "26915981": 1
+   }
+  },
+  {
+   "key": "towing",
+   "for": "Towing",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "trippak",
+   "for": "Trippak",
+   "tasks": {
+    "43828032": 1
+   }
+  },
+  {
+   "key": "jump start",
+   "for": "Jump start",
+   "tasks": {
+    "26916196": 1
+   }
+  },
+  {
+   "key": "rs hub cap",
+   "for": "RS for hub cap",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "reparacion de llanta",
+   "for": "reparacion de llanta",
+   "tasks": {
+    "44133075": 1
+   }
+  },
+  {
+   "key": "radiator replacement",
+   "for": "Radiator replacement",
+   "tasks": {
+    "26916093": 1
+   }
+  },
+  {
+   "key": "check and advise",
+   "for": "For check and advise",
+   "tasks": {
+    "26915981": 1
+   }
+  },
+  {
+   "key": "air dryer replaced",
+   "for": "Air dryer replaced",
+   "tasks": {
+    "46388772": 1
+   }
+  },
+  {
+   "key": "load bar",
+   "for": "Load bars",
+   "tasks": {
+    "43831799": 1
+   }
+  },
+  {
+   "key": "right steer tire replacement",
+   "for": "Right steer tire replacement",
+   "tasks": {
+    "26916002": 1
+   }
+  },
+  {
+   "key": "flight orlando to pittsburgh",
+   "for": "Flight Orlando to Pittsburgh",
+   "tasks": {
+    "43827981": 1
+   }
+  },
+  {
+   "key": "wheel chock",
+   "for": "Wheel chock",
+   "tasks": {
+    "43828032": 1
+   }
+  },
+  {
+   "key": "windshield washer fluid and strap",
+   "for": "windshield washer fluid and strap",
+   "tasks": {
+    "43828032": 1
+   }
+  },
+  {
+   "key": "side turn light installation",
+   "for": "Trailer side turn light installation",
+   "tasks": {
+    "26916013": 1
+   }
+  },
+  {
+   "key": "hub oil refill",
+   "for": "Trailer hub oil refill",
+   "tasks": {
+    "40220570": 1
+   }
+  },
+  {
+   "key": "driver side mirror",
+   "for": "Driver side mirror",
+   "tasks": {
+    "26916175": 1
+   }
+  },
+  {
+   "key": "and inspection",
+   "for": "Truck and trailer inspection",
+   "tasks": {
+    "26915982": 1
+   }
+  },
+  {
+   "key": "clutch and clutch actuator replacement",
+   "for": "Clutch and Clutch actuator replacement",
+   "tasks": {
+    "26915984": 1
+   }
+  },
+  {
+   "key": "shock absorber replacement",
+   "for": "SHOCK ABSORBER REPLACEMENT",
+   "tasks": {
+    "26916249": 1
+   }
+  },
+  {
+   "key": "airbag replacement and check tire",
+   "for": "Trailer 562365 airbag replacement and check the tire",
+   "tasks": {
+    "26916164": 1
+   }
+  },
+  {
+   "key": "two axle alignment",
+   "for": "Two axle alignment",
+   "tasks": {
+    "26916146": 1
+   }
+  },
+  {
+   "key": "annual inspection",
+   "for": "Trailer annual inspection",
+   "tasks": {
+    "26915982": 1
+   }
+  },
+  {
+   "key": "air bag repair",
+   "for": "Trailer air bag repair",
+   "tasks": {
+    "26916164": 1
+   }
+  },
+  {
+   "key": "hotel room returning driver paid via card",
+   "for": "Hotel room for returning driver Paid via Card: 0557",
+   "tasks": {
+    "43827983": 1
+   }
+  },
+  {
+   "key": "safety vest",
+   "for": "safety vest",
+   "tasks": {
+    "43828032": 1
+   }
+  },
+  {
+   "key": "mud flap replacement and bracket repair",
+   "for": "Trailer mud flap replacement and bracket repair",
+   "tasks": {
+    "44198144": 1
+   }
+  },
+  {
+   "key": "towing and to shop",
+   "for": "Towing truck and trailer to shop",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "roof hole patch",
+   "for": "Trailer roof hole patch",
+   "tasks": {
+    "44197684": 1
+   }
+  },
+  {
+   "key": "hotel receipt driver paid via card",
+   "for": "Hotel receipt for New Drivers Paid via Card: 0557",
+   "tasks": {
+    "43827983": 1
+   }
+  },
+  {
+   "key": "road service to replace brake spring valve",
+   "for": "Road service to replace trailer brake spring valve",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "passenger steer tire replacement",
+   "for": "Passenger steer tire replacement",
+   "tasks": {
+    "26916002": 1
+   }
+  },
+  {
+   "key": "towing to dealership",
+   "for": "Towing the truck to dealership",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "reimbursement print and padlock",
+   "for": "reimbursement for print and padlock",
+   "tasks": {
+    "43828032": 1
+   }
+  },
+  {
+   "key": "flight midland to phoenix",
+   "for": "Flight Midland to Phoenix",
+   "tasks": {
+    "43827981": 1
+   }
+  },
+  {
+   "key": "flight mcallen to dalla",
+   "for": "Flight McAllen to Dallas",
+   "tasks": {
+    "43827981": 1
+   }
+  },
+  {
+   "key": "train ticket",
+   "for": "Train Ticket",
+   "tasks": {
+    "43827992": 1
+   }
+  },
+  {
+   "key": "oil 5w40",
+   "for": "Oil 5W40",
+   "tasks": {
+    "26916073": 1
+   }
+  },
+  {
+   "key": "charger tablet",
+   "for": "Charger for tablet",
+   "tasks": {
+    "50410185": 1
+   }
+  },
+  {
+   "key": "mudflap installation",
+   "for": "Mudflap installation",
+   "tasks": {
+    "44198144": 1
+   }
+  },
+  {
+   "key": "tool",
+   "for": "Tools",
+   "tasks": {
+    "43828032": 1
+   }
+  },
+  {
+   "key": "clamp",
+   "for": "Clamp",
+   "tasks": {
+    "43828032": 1
+   }
+  },
+  {
+   "key": "wiper motor installation",
+   "for": "Wiper motor installation",
+   "tasks": {
+    "26916204": 1
+   }
+  },
+  {
+   "key": "detailing service",
+   "for": "Detailing service",
+   "tasks": {
+    "43989208": 1
+   }
+  },
+  {
+   "key": "tire inflation system hose replecament",
+   "for": "Trailer tire inflation system hose replecament",
+   "tasks": {
+    "44393603": 1
+   }
+  },
+  {
+   "key": "clutch clutch cylinder repalcement clutch calibration",
+   "for": "CLUTCH / CLUTCH CYLINDER REPALCEMENT, CLUTCH CALIBRATION",
+   "tasks": {
+    "45125580": 1
+   }
+  },
+  {
+   "key": "fifth wheel grease",
+   "for": "Fifth wheel grease",
+   "tasks": {
+    "39974830": 1
+   }
+  },
+  {
+   "key": "emergency fuel",
+   "for": "Emergency fuel",
+   "tasks": {
+    "33286056": 1
+   }
+  },
+  {
+   "key": "fuel rail fuel pump mounting ring high pre ring fuel line replacement",
+   "for": "Fuel rail, fuel pump, mounting ring high pres, ring fuel line replacements",
+   "tasks": {
+    "26915922": 1
+   }
+  },
+  {
+   "key": "rs and tire replacement",
+   "for": "RS and trailer tire replacement",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "tire replecament",
+   "for": "Trailer tire replecament",
+   "tasks": {
+    "26916002": 1
+   }
+  },
+  {
+   "key": "sleeper inteior detailing",
+   "for": "Sleeper inteior detailing",
+   "tasks": {
+    "43989208": 1
+   }
+  },
+  {
+   "key": "wiper motor",
+   "for": "Wiper motor",
+   "tasks": {
+    "33286067": 1
+   }
+  },
+  {
+   "key": "fire extinguisher",
+   "for": "Fire extinguisher",
+   "tasks": {
+    "33288449": 1
+   }
+  },
+  {
+   "key": "dot inspection greasing",
+   "for": "Truck DOT inspection, greasing",
+   "tasks": {
+    "26915982": 1
+   }
+  },
+  {
+   "key": "engine oil and strap",
+   "for": "engine oil and straps",
+   "tasks": {
+    "43828032": 1
+   }
+  },
+  {
+   "key": "air tank push connector replacement",
+   "for": "Trailer air tank push connector replacement",
+   "tasks": {
+    "44163139": 1
+   }
+  },
+  {
+   "key": "hub cap replacement",
+   "for": "HUB CAP REPLACEMENT",
+   "tasks": {
+    "33135860": 1
+   }
+  },
+  {
+   "key": "oil change and tire inspection",
+   "for": "Oil change and tire inspection",
+   "tasks": {
+    "33286027": 1
+   }
+  },
+  {
+   "key": "diagnosed",
+   "for": "Truck diagnosed",
+   "tasks": {
+    "26915981": 1
+   }
+  },
+  {
+   "key": "garmin gps",
+   "for": "Garmin GPS",
+   "tasks": {
+    "50409169": 1
+   }
+  },
+  {
+   "key": "ziptie padlock and tool",
+   "for": "Ziptie, padlock and tool",
+   "tasks": {
+    "43828032": 1
+   }
+  },
+  {
+   "key": "hub oil",
+   "for": "hub oil",
+   "tasks": {
+    "33288495": 1
+   }
+  },
+  {
+   "key": "padlock king pin lock scale",
+   "for": "Padlock king pin lock scale",
+   "tasks": {
+    "43827996": 1
+   }
+  },
+  {
+   "key": "def pump replacement",
+   "for": "DEF pump replacement",
+   "tasks": {
+    "33286289": 1
+   }
+  },
+  {
+   "key": "water separator assembly",
+   "for": "water separator assembly",
+   "tasks": {
+    "40119427": 1
+   }
+  },
+  {
+   "key": "road service bring water separator assembly from dealer and install it",
+   "for": "Road service for bring the water separator assembly from dealer and install it",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "electrical issue fixed",
+   "for": "Trailer electrical issue fixed",
+   "tasks": {
+    "26915978": 1
+   }
+  },
+  {
+   "key": "air dryer filter replacement",
+   "for": "Air dryer filter replacement",
+   "tasks": {
+    "46388772": 1
+   }
+  },
+  {
+   "key": "airleak coolant sensor",
+   "for": "Trailer airleak coolant sensor",
+   "tasks": {
+    "33288483": 1
+   }
+  },
+  {
+   "key": "bumper replacement",
+   "for": "Bumper replacement",
+   "tasks": {
+    "26916165": 1
+   }
+  },
+  {
+   "key": "air hose fitting",
+   "for": "Air hose fitting",
+   "tasks": {
+    "44130908": 1
+   }
+  },
+  {
+   "key": "fuel system diagnostic",
+   "for": "Truck fuel system diagnostics",
+   "tasks": {
+    "26915981": 1
+   }
+  },
+  {
+   "key": "mud flap installation and straighten bracket",
+   "for": "Trailer mud flap installation and straighten the bracket",
+   "tasks": {
+    "44198144": 1
+   }
+  },
+  {
+   "key": "drive shaft replacement",
+   "for": "Drive shaft replacement",
+   "tasks": {
+    "44131157": 1
+   }
+  },
+  {
+   "key": "tailer tire",
+   "for": "4 new tailer tire",
+   "tasks": {
+    "26916002": 1
+   }
+  },
+  {
+   "key": "light fixed",
+   "for": "Trailer light fixed",
+   "tasks": {
+    "26916013": 1
+   }
+  },
+  {
+   "key": "trl dot",
+   "for": "Trl DOT",
+   "tasks": {
+    "26915982": 1
+   }
+  },
+  {
+   "key": "tire patch by rs",
+   "for": "Truck tire patch by RS",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "one mudflap and steel arm",
+   "for": "One mudflap and steel arm",
+   "tasks": {
+    "44198144": 1
+   }
+  },
+  {
+   "key": "air bag replaced",
+   "for": "Trailer air bag replaced",
+   "tasks": {
+    "26916164": 1
+   }
+  },
+  {
+   "key": "padlock money transfer code",
+   "for": "Padlock Money Transfer code 2019883678",
+   "tasks": {
+    "43828032": 1
+   }
+  },
+  {
+   "key": "steer tire change",
+   "for": "Steer tire change",
+   "tasks": {
+    "26916002": 1
+   }
+  },
+  {
+   "key": "windshield washer fluid and padlock",
+   "for": "Windshield washer fluid and padlock",
+   "tasks": {
+    "26916137": 1
+   }
+  },
+  {
+   "key": "top corner light",
+   "for": "top corner light",
+   "tasks": {
+    "33286350": 1
+   }
+  },
+  {
+   "key": "drive tire",
+   "for": "4 drive tires",
+   "tasks": {
+    "26916002": 1
+   }
+  },
+  {
+   "key": "quarter fender",
+   "for": "2 quarter fender",
+   "tasks": {
+    "43919570": 1
+   }
+  },
+  {
+   "key": "side mirror glass",
+   "for": "Side mirror glass",
+   "tasks": {
+    "26916175": 1
+   }
+  },
+  {
+   "key": "belly airline replaced",
+   "for": "Trailer belly airline replaced",
+   "tasks": {
+    "44130908": 1
+   }
+  },
+  {
+   "key": "road service to replace valve head and airline",
+   "for": "Road service to replace valve head and airline",
+   "tasks": {
+    "26916098": 1
+   }
+  },
+  {
+   "key": "padlock and tool",
+   "for": "Padlock and tools",
+   "tasks": {
+    "43828032": 1
+   }
+  },
+  {
+   "key": "fridge",
+   "for": "Fridge",
+   "tasks": {
+    "44102384": 1
+   }
+  },
+  {
+   "key": "microwave",
+   "for": "Microwave",
+   "tasks": {
+    "44102388": 1
+   }
+  },
+  {
+   "key": "coolant tank replacement",
+   "for": "Coolant tank replacement",
+   "tasks": {
+    "33286367": 1
+   }
+  },
+  {
+   "key": "carb test",
+   "for": "Carb test",
+   "tasks": {
+    "43960472": 1
+   }
+  },
+  {
+   "key": "parking ticket woodbridge nj",
+   "for": "Parking Ticket- Woodbridge, NJ",
+   "tasks": {
+    "43827995": 1
+   }
+  },
+  {
+   "key": "carb test and annual inspection",
+   "for": "Carb test and annual inspection",
+   "tasks": {
+    "33286302": 1
+   }
+  },
+  {
+   "key": "oil change rankcase breather filter fitting replacement central bearing replacement adjustment ring yoke seal replacement u joint replacement shock absorber replacement bushing replacement multiaxle wheel alignment steer and drive tire change brake shoe drum replacement c evaporator c dryer replacement c recharge engine compartment cleaning",
+   "for": "OIL CHANGE, RANKCASE BREATHER FILTER FITTING REPLACEMENT, CENTRAL BEARING REPLACEMENT, ADJUSTMENT RING / YOKE SEAL REPLACEMENT, U-JOINTS REPLACEMENT, SHOCK ABSORBERS REPLACEMENT, BUSHINGS REPLACEMENT, MULTIAXLE WHEEL ALIGNMENT, STEER and DRIVE TIRE CHANGE, BRAKE SHOES / DRUMS REPLACEMENT, A/C EVAPORATOR / A/C DRYER REPLACEMENT, A/C RECHARGE, ENGINE COMPARTMENT CLEANING",
+   "tasks": {
+    "33286027": 1
+   }
+  },
+  {
+   "key": "exhaust manifold pressure sensor replacement",
+   "for": "EXHAUST MANIFOLD PRESSURE SENSORS REPLACEMENT",
+   "tasks": {
+    "26916042": 1
+   }
+  },
+  {
+   "key": "steer tire change tire balance drive tire change multiaxle wheel alignment air dryer unit replacement power steering fluid flush filter replacement fluid inspection",
+   "for": "STEER TIRE CHANGE, TIRE BALANCE, DRIVE TIRE CHANGE, MULTIAXLE WHEEL ALIGNMENT, AIR DRYER UNIT REPLACEMENT, POWER STEERING FLUID FLUSH / FILTER REPLACEMENT, FLUIDS INSPECTION",
+   "tasks": {
+    "33286421": 1
+   }
+  },
+  {
+   "key": "injector seal replacement engine compartment cleaning wheel seal replacement",
+   "for": "INJECTOR SEALS REPLACEMENT, ENGINE COMPARTMENT CLEANING, WHEEL SEAL REPLACEMENT",
+   "tasks": {
+    "33292302": 1
+   }
+  },
+  {
+   "key": "oil change batterie replacement terminal cleaning coolant level sensor replacement starter replacement c compressor expansion valve seal kit replacement c recharge air tank replacement",
+   "for": "OIL CHANGE, BATTERIES REPLACEMENT/ TERMINALS CLEANING, COOLANT LEVEL SENSOR REPLACEMENT, STARTER REPLACEMENT, A/C COMPRESSOR / EXPANSION VALVE / SEAL KIT REPLACEMENT, A/C RECHARGE, AIR TANKS REPLACEMENT",
+   "tasks": {
+    "33286027": 1
+   }
+  },
+  {
+   "key": "deer guard repair painting welding bumper assembly replacement steer tire rim change front suspension inspection",
+   "for": "DEER GUARD REPAIRS / PAINTING / WELDING, BUMPER ASSEMBLY REPLACEMENT, STEER TIRES, RIM CHANGE, FRONT SUSPENSION INSPECTION",
+   "tasks": {
+    "33288659": 1
+   }
+  },
+  {
+   "key": "oil change valve adjustment fog light replacement",
+   "for": "OIL CHANGE, VALVE ADJUSTMENT, FOG LIGHT REPLACEMENT",
+   "tasks": {
+    "33286027": 1
+   }
+  },
+  {
+   "key": "injector harness repair",
+   "for": "INJECTOR HARNESS REPAIRS",
+   "tasks": {
+    "33286024": 1
+   }
+  },
+  {
+   "key": "oil change shock absorber replacement indshield washer fluid",
+   "for": "OIL CHANGE, SHOCK ABSORBER REPLACEMENT, INDSHIELD WASHER FLUID",
+   "tasks": {
+    "33286027": 1
+   }
+  },
+  {
+   "key": "oil change engine air filter replacement fluid inspection suspension inspection valve adjustment in cable quick release valve replacement",
+   "for": "OIL CHANGE, ENGINE AIR FILTER REPLACEMENT, FLUIDS INSPECTION, SUSPENSION INSPECTION, VALVE ADJUSTMENT, 3 IN 1 CABLE/ QUICK RELEASE VALVES REPLACEMENT",
+   "tasks": {
+    "33286027": 1
+   }
+  },
+  {
+   "key": "computer diagnostic steer tire change transmission fluid replacement",
+   "for": "COMPUTER DIAGNOSTICS, STEER TIRE CHANGE, TRANSMISSION FLUID REPLACEMENT",
+   "tasks": {
+    "33286421": 1
+   }
+  },
+  {
+   "key": "oil change engine air filter replacement",
+   "for": "OIL CHANGE, ENGINE AIR FILTER REPLACEMENT",
+   "tasks": {
+    "33286027": 1
+   }
+  },
+  {
+   "key": "oil change injector seal bumper reinforcement replacement foglight installation steer and drive tire change",
+   "for": "OIL CHANGE, INJECTOR SEALS, BUMPER REINFORCEMENT REPLACEMENT/ FOGLIGHT INSTALLATION, STEER AND DRIVE TIRE CHANGE",
+   "tasks": {
+    "33286027": 1
+   }
+  },
+  {
+   "key": "valve adjustment injector harness gasket application computer diagnostic sensor replacement",
+   "for": "VALVE ADJUSTMENT, INJECTOR HARNESS GASKET APPLICATION, COMPUTER DIAGNOSTICS, SENSORS REPLACEMENT",
+   "tasks": {
+    "26915940": 1
+   }
+  },
+  {
+   "key": "reimbursement load bar",
+   "for": "Reimbursement for load bar",
+   "tasks": {
+    "43831799": 1
+   }
+  },
+  {
+   "key": "reimbursement logistic strap",
+   "for": "Reimbursement for Logistic Straps",
+   "tasks": {
+    "43827989": 1
+   }
+  },
+  {
+   "key": "air leak fixed",
+   "for": "Trailer air leak fixed",
+   "tasks": {
+    "33288527": 1
+   }
+  },
+  {
+   "key": "steer tire change multiaxle wheel alignment",
+   "for": "STEER TIRE CHANGE, MULTIAXLE WHEEL ALIGNMENT",
+   "tasks": {
+    "33286421": 1
+   }
+  },
+  {
+   "key": "fix hole in front panel",
+   "for": "FIX HOLE IN FRONT PANEL OF TRAILER",
+   "tasks": {
+    "46494408": 1
+   }
+  },
+  {
+   "key": "make key",
+   "for": "Make a key",
+   "tasks": {
+    "26916191": 1
+   }
+  },
+  {
+   "key": "flight dalla to orlando",
+   "for": "Flight Dallas to Orlando",
+   "tasks": {
+    "43827981": 1
+   }
+  },
+  {
+   "key": "blown tire replacement",
+   "for": "Blown tire replacement on the truck",
+   "tasks": {
+    "26916002": 1
+   }
+  },
+  {
+   "key": "and dot",
+   "for": "Truck and trailer DOT",
+   "tasks": {
+    "26915982": 1
+   }
+  },
+  {
+   "key": "flight atlanta to los angele",
+   "for": "Flight Atlanta to Los Angeles",
+   "tasks": {
+    "43827981": 1
+   }
+  },
+  {
+   "key": "flight orlando to atlanta",
+   "for": "Flight Orlando to Atlanta",
+   "tasks": {
+    "43827981": 1
+   }
+  },
+  {
+   "key": "ticket",
+   "for": "Ticket",
+   "tasks": {
+    "47658588": 1
+   }
+  },
+  {
+   "key": "abs sensor kit replacement",
+   "for": "Trailer 562347 ABS SENSOR KIT replacement",
+   "tasks": {
+    "36032750": 1
+   }
+  },
+  {
+   "key": "drive tire patch",
+   "for": "Drive tire patch",
+   "tasks": {
+    "33288522": 1
+   }
+  },
+  {
+   "key": "flight to amarillo tx meeting with parole officer",
+   "for": "Flight to Amarillo, TX for meeting with parole officer",
+   "tasks": {
+    "43827981": 1
+   }
+  },
+  {
+   "key": "hotel room",
+   "for": "Hotel Room",
+   "tasks": {
+    "43827983": 1
+   }
+  },
+  {
+   "key": "removing and replacing main air line by rs",
+   "for": "removing and replacing main air line by RS",
+   "tasks": {
+    "33288536": 1
+   }
+  },
+  {
+   "key": "oil and coolant",
+   "for": "Oil and coolant",
+   "tasks": {
+    "46708435": 1
+   }
+  },
+  {
+   "key": "and dot inspection",
+   "for": "Truck and trailer DOT inspection",
+   "tasks": {
+    "26915982": 1
+   }
+  },
+  {
+   "key": "tire replaced",
+   "for": "Tire replaced",
+   "tasks": {
+    "26916002": 1
+   }
+  }
+ ]
+}
