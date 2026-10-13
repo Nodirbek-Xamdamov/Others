@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+*.log
+data/live_sheet.xlsx
+*.tmp
+
+data/authorized_users.json
+data/work_orders_log.json
+data/cache/
+
+# client fleet board (drivers, VINs, contacts) - never publish
+data/Fleet_Truck_Info_Board.xlsx
