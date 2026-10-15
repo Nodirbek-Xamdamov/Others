@@ -19,10 +19,11 @@ from . import fmt, quick
 from .agent import Answer, FleetAgent
 from .auth import Auth, AuthMiddleware
 from .config import ROOT, settings, spreadsheet_file
-from .fleetio import FleetioClient
+from .fleetio import FleetioClient, FleetioError
 from .fleetio_agent import FleetioAgent
+from .fleetio_reports import PREFETCH_EVERY_S, Reports
 from .loader import load
-from .router import Router
+from .router import UNIT_ONLY, Router
 from .wo_bot import WOBot
 from .workorders import WorkOrders
 
@@ -47,7 +48,7 @@ HELP = (
     "🚛 Active fleet: <b>{trucks} trucks</b> · data loaded {loaded}\n\n"
     "💬 <b>Ask in plain words</b>, for example:\n"
     "• Who has unit 417?\n"
-    "• Which truck does Quentin Brownlee drive?\n"
+    "• Which truck does John Smith drive?\n"
     "• Which trucks are overdue for PM?\n"
     "• Trucks with inspections expiring next month\n"
     "• How many trucks are in the Riverview group?\n"
@@ -299,31 +300,30 @@ BTN_F_OVERVIEW, BTN_F_SERVICE, BTN_F_RENEWALS, BTN_F_ISSUES = (
 F_KEYBOARD = ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton(text=BTN_F_OVERVIEW), KeyboardButton(text=BTN_F_SERVICE)],
               [KeyboardButton(text=BTN_F_RENEWALS), KeyboardButton(text=BTN_F_ISSUES)],
-              [KeyboardButton(text=BTN_HELP)]],
+              [KeyboardButton(text=BTN_NODRV), KeyboardButton(text=BTN_HELP)]],
     resize_keyboard=True, is_persistent=True, input_field_placeholder="Ask about vehicles, drivers, service…",
 )
-# tugma / buyruq -> tayyor savol (javobni baribir Fleetio'dan agent tayyorlaydi)
-F_CANNED = {
-    BTN_F_OVERVIEW: "Fleet overview: total number of vehicles and how many are in each status.",
-    BTN_F_SERVICE: "Which service reminders are overdue or due soon? Show vehicle, service task and when it is due.",
-    BTN_F_RENEWALS: "Which vehicle renewal reminders (registration, inspection, insurance etc.) are overdue or due soon?",
-    BTN_F_ISSUES: "List open issues: vehicle, issue summary, priority and reported date.",
-}
-F_COMMANDS = {"overview": BTN_F_OVERVIEW, "service": BTN_F_SERVICE, "renewals": BTN_F_RENEWALS, "issues": BTN_F_ISSUES}
+# tugma -> tayyor hisobot (fleetio_reports: LLM'siz, odatda 0-1 s). Jadval rejimidan qolgan eski tugmalar ham —
+# ko'p foydalanuvchida hali eski klaviatura turibdi; ularga javob bilan yangi klaviatura ham yuboriladi.
+F_REPORT_BUTTONS = {BTN_F_OVERVIEW: "overview", BTN_F_SERVICE: "service", BTN_F_RENEWALS: "renewals",
+                    BTN_F_ISSUES: "issues", BTN_NODRV: "nodriver"}
+OLD_BUTTONS = {BTN_STATS: "overview", BTN_PM: "service", BTN_EXP: "renewals"}
+F_COMMANDS = {"overview": "overview", "service": "service", "renewals": "renewals", "issues": "issues",
+              "nodriver": "nodriver", "stats": "overview", "pm": "service", "expiring": "renewals"}
 
 F_HELP = (
     "👋 <b>Hello!</b> I answer questions about the <b>{company}</b> fleet using <b>live data from Fleetio</b>.\n\n"
-    "💬 <b>Ask in plain words</b>, for example:\n"
-    "• How many vehicles do we have, by status?\n"
+    "⚡️ <b>Instant reports</b> — buttons below, or send just a unit number (e.g. <code>417</code>) for its card.\n\n"
+    "💬 <b>Or ask in plain words</b>, for example:\n"
     "• Who is driving unit 417?\n"
-    "• Which service reminders are overdue?\n"
     "• Open issues for unit 417\n"
     "• Last fuel entries of unit 417\n"
-    "• Which registrations expire this month?\n\n"
+    "• Which registrations expire this month?\n"
+    "• Repair costs of unit 417 this year\n\n"
     "🧾 <b>Work orders</b>: in an enabled chat, send the invoice file with the caption "
-    "(Unit / Driver / Date / Amount / For / Ref / Responsible, then the shop name and address) — "
+    "(Unit / Date are required; Driver / Amount / For / Ref / Responsible and the shop name and address are optional) — "
     "I create the work order in Fleetio.\n\n"
-    "⚡️ Buttons below give quick reports.\n"
+    "/unit 417 — vehicle card\n"
     "/reset — clear the conversation context\n"
     "/api — Fleetio requests used for the last answer (for checking)"
 )
@@ -332,8 +332,9 @@ F_NOT_CONFIGURED = ("⚙️ Fleetio is not connected yet: the API key is missing
 
 
 class FleetioState:
-    def __init__(self, agent: FleetioAgent):
+    def __init__(self, agent: FleetioAgent, reports: Reports | None = None):
         self.agent = agent
+        self.reports = reports or (Reports(agent.fleetio) if agent is not None else None)
         self.history: dict[int, deque] = defaultdict(lambda: deque(maxlen=HISTORY_TURNS * 2))
         self.last_calls: dict[int, list[str]] = {}
         self.cache: dict[str, tuple[float, Answer]] = {}
@@ -385,6 +386,32 @@ def build_fleetio_dispatcher(state: FleetioState, auth: Auth | None = None, wo: 
         text = "\n".join(f"<code>GET {fmt.esc(c)}</code>" for c in calls) if calls else "No Fleetio requests yet."
         await send(msg, text)
 
+    async def report(msg: Message, name: str, arg: str | None = None) -> None:
+        """Tayyor hisobot (LLM'siz). Eski tugma bosilgan bo'lsa (shaxsiy chatda) javob bilan yangi klaviatura ham boradi."""
+        t0 = time.monotonic()
+        if not state.agent.fleetio.configured():
+            await msg.answer(F_NOT_CONFIGURED)
+            return
+        swap = msg.text in OLD_BUTTONS and msg.chat.type == ChatType.PRIVATE
+        wait = None
+        if swap:  # reply-klaviaturani faqat yangi xabar bilan almashtirib bo'ladi (tahrir bilan emas)
+            await msg.bot.send_chat_action(msg.chat.id, "typing")
+        else:
+            wait = await msg.answer("🔎 Checking Fleetio…")
+        try:
+            text = await asyncio.to_thread(state.reports.get, name, arg)
+        except FleetioError as e:
+            log.warning("hisobot %s: %s", name, e)
+            text = f"⚠️ Fleetio did not answer: {fmt.esc(str(e))[:500]}\nPlease try again in a minute."
+        if swap:
+            parts = list(chunks(text)) or ["—"]
+            for i, part in enumerate(parts):
+                await _safe(msg.answer, part, reply_markup=F_KEYBOARD if i == len(parts) - 1 else None)
+        else:
+            await send(msg, text, edit=wait)
+        state.remember(msg.chat.id, msg.text or f"/{name}", text)
+        log.info("javob %.2f s (hisobot %s): %s", time.monotonic() - t0, name, (msg.text or "")[:80])
+
     async def ask(msg: Message, question: str) -> None:
         chat = msg.chat.id
         t0 = time.monotonic()
@@ -399,8 +426,16 @@ def build_fleetio_dispatcher(state: FleetioState, auth: Auth | None = None, wo: 
             ans = cached[1]
         else:
             wait = await msg.answer("🔎 Checking Fleetio…")
+            shown = [wait.text or ""]
+
+            async def progress(label: str) -> None:  # foydalanuvchi nima tekshirilayotganini ko'rib turadi
+                text = f"🔎 Checking Fleetio: {fmt.esc(label)}…"
+                if text != shown[0]:
+                    shown[0] = text
+                    await _safe(wait.edit_text, text)
+
             try:
-                ans = await state.agent.answer(question, hist)
+                ans = await state.agent.answer(question, hist, progress=progress)
             except Exception as e:  # noqa: BLE001
                 log.exception("LLM xato")
                 busy = "429" in str(e) or "rate" in str(e).lower()
@@ -415,20 +450,40 @@ def build_fleetio_dispatcher(state: FleetioState, auth: Auth | None = None, wo: 
         await send(msg, ans.text, edit=wait)
         log.info("javob %.2f s (%s, %d so'rov): %s", time.monotonic() - t0, ans.via, len(ans.queries), question[:80])
 
-    for cmd, btn in F_COMMANDS.items():
-        async def canned(msg: Message, _q=F_CANNED[btn]):
-            await ask(msg, _q)
-        dp.message.register(canned, Command(cmd))
+    for cmd, name in F_COMMANDS.items():
+        async def from_command(msg: Message, _name=name):
+            await report(msg, _name)
+        dp.message.register(from_command, Command(cmd))
+
+    @dp.message(Command("unit"))
+    async def unit_card(msg: Message, command: CommandObject):
+        await report(msg, "unit", command.args or "")
+
+    @dp.message(F.text.in_(F_REPORT_BUTTONS.keys() | OLD_BUTTONS.keys()))
+    async def from_button(msg: Message):
+        await report(msg, F_REPORT_BUTTONS.get(msg.text) or OLD_BUTTONS[msg.text])
 
     @dp.message(F.text)
     async def question(msg: Message):
-        text = msg.text.strip()
-        if GREETING.match(text):
+        text = re.sub(r"(?i)@\w+bot\b", "", msg.text).strip()  # guruhda botga murojaat (@...bot) savol emas
+        if not text or GREETING.match(text):
             await help_(msg)
             return
-        await ask(msg, F_CANNED.get(text, text))
+        m = UNIT_ONLY.match(text)
+        if m and re.search(r"\d", m.group(1)):  # faqat unit raqami ("417", "unit 3871", "0832 ED") -> karta, LLM'siz
+            await report(msg, "unit", m.group(1))
+            return
+        await ask(msg, text)
 
     return dp
+
+
+async def prefetch_reports(reports: Reports) -> None:
+    """Og'ir hisobotlar (service ~1300 yozuv) fonda tayyorlanib turadi — tugma bosilganda darhol chiqadi."""
+    await asyncio.sleep(30)  # ishga tushishda avval work order ma'lumotnomalari yuklansin
+    while True:
+        await asyncio.to_thread(reports.prefetch)
+        await asyncio.sleep(PREFETCH_EVERY_S)
 
 
 async def auto_refresh(state: State) -> None:
@@ -465,18 +520,22 @@ async def main() -> None:
         agent = FleetioAgent(fleetio, **llm)
         # invoys fayli -> Fleetio work order; service task tanlashda arzon model zanjiri ishlatiladi
         wo = WOBot(WorkOrders(fleetio, llm_chat=agent._chat, llm_models=agent.simple_models))
-        dp = build_fleetio_dispatcher(FleetioState(agent), auth, wo)
+        # hisobotlar mashinalar ro'yxatini work order ma'lumotnomasidan oladi (fonda yangilanadi — bosilganda darhol)
+        reports = Reports(fleetio, vehicles=wo.svc.ref.vehicles)
+        dp = build_fleetio_dispatcher(FleetioState(agent, reports), auth, wo)
         commands = [
             BotCommand(command="overview", description="🚚 Fleet overview"),
             BotCommand(command="service", description="🛠 Service reminders due"),
             BotCommand(command="renewals", description="📄 Renewals due"),
             BotCommand(command="issues", description="⚠️ Open issues"),
+            BotCommand(command="nodriver", description="🅿️ Trucks without a driver"),
+            BotCommand(command="unit", description="🚛 Vehicle card: /unit 417"),
             BotCommand(command="help", description="❓ What can I ask?"),
             BotCommand(command="reset", description="Clear conversation context"),
             BotCommand(command="api", description="Fleetio requests of the last answer"),
         ]
         source = f"Fleetio ({len(fleetio.catalog.routes)} read-only tools, key {'OK' if fleetio.configured() else 'YOQ'})"
-        refresher = None
+        refresher = prefetch_reports(reports)
     else:
         path = spreadsheet_file()
         agent = FleetAgent(load(path), **llm)
@@ -507,8 +566,8 @@ async def main() -> None:
     log.info("Bot ishga tushdi: @%s | modellar: %s | %s | login: %s", me.username, models_desc, source,
              f"yoqilgan ({len(auth.users)} ta kirgan)" if auth.enabled else "O'CHIQ")
 
-    if refresher is not None:
-        asyncio.create_task(refresher)
+    # fon vazifasiga havola saqlanadi (aks holda asyncio uni yig'ishtirib yuborishi mumkin)
+    background = asyncio.create_task(refresher) if refresher is not None else None  # noqa: F841
     if wo is not None:  # ma'lumotnomalar fon rejimida yuklanadi — birinchi invoys kutib qolmasin
         wo.warm_up()
         log.info("Work order: ruxsatli chatlar %s%s", sorted(wo.svc.allowed_chats()) or "YO'Q (WO_CHAT_IDS bo'sh)",

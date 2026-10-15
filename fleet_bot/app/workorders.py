@@ -4,7 +4,7 @@ Saytda qo'lda bajariladigan tartibning o'zi, API orqali:
   Vehicle           — Unit raqami (Trailer qatori bo'lib, ish faqat treylerga tegishli bo'lsa — treyler)
   Status            — doim Completed
   Repair Priority   — matnda Roadside / Road side / RS / RC bo'lsa Emergency, aks holda Scheduled
-  Issued by         — API key egasi (Charlie Pearson)
+  Issued by         — API key egasi (GET /users/me)
   Issue / Start / Expected Completion / Actual Completion Date = xabardagi Date
   Assigned To       — Driver (kontaktlardan)
   Vendor            — ustaxona nomi+manzili bo'yicha qidiriladi, topilmasa yangi yaratiladi
@@ -12,6 +12,9 @@ Saytda qo'lda bajariladigan tartibning o'zi, API orqali:
   Issue (yangi)     — Summary = For, No Priority, Reported = Date, Label = Responsible, Reference Number = Ref,
                       Telegram'dagi fayl(lar) Documents'ga biriktiriladi
   Line item         — "For" bo'yicha service task, Subtotal = Amount
+
+Majburiy faqat Unit va Date (Fleetio'da ham Vehicle va Issue Date majburiy). Qolganlari bo'lmasa bo'sh qoladi:
+ustaxona yo'q — vendor'siz, Amount yo'q — line item narxsiz, For yo'q — issue va line item'siz (fayl work order'ga).
 
 Yozish ketma-ketligi: vendor -> label -> fayl -> issue -> work order. Har qadam natijasi jurnalga
 (data/work_orders_log.json) yoziladi: o'rtada uzilsa, qayta urinish yaratilgan narsani ikkinchi marta yaratmaydi.
@@ -31,7 +34,7 @@ from pathlib import Path
 from . import fmt
 from . import wo_match as M
 from .config import ROOT
-from .fleetio import FleetioClient, FleetioError, credentials, env
+from .fleetio import FleetioClient, FleetioError, credentials, env, web_link  # noqa: F401 — web_link: wo_bot uchun
 from .fleetio_write import FleetioUncertain, FleetioWriter
 from .wo_parser import Invoice
 
@@ -52,7 +55,9 @@ _RAILS_TZ = {"Eastern Time (US & Canada)": "America/New_York", "Central Time (US
              "Hawaii": "Pacific/Honolulu", "UTC": "UTC"}
 TASKS_MAX_AGE_S = 7 * 86400
 VENDORS_FULL_SYNC_S = 86400
-VENDORS_SYNC_EVERY_S = 60
+REFRESH_EVERY_S = 300        # fon yangilash: mashinalar va vendorlar (o'zgarganlari) har 5 daqiqada
+SLOW_REFRESH_EVERY = 6       # kontaktlar va labellar har 6-yangilashda (30 daqiqa)
+CONTACTS_FRESH_MIN_AGE_S = 600  # haydovchi topilmasa kontaktlar qayta yuklanadi, lekin ko'pi bilan 10 daqiqada bir
 OLD_DATE_WARN_DAYS = 60
 
 TASK_PROMPT = """You choose the Fleetio service task for a repair or expense invoice of a US trucking company.
@@ -99,6 +104,7 @@ class Plan:
     task: dict | None = None
     task_how: str = ""                   # learned | history | ai | ai? | chosen
     task_options: list[dict] = field(default_factory=list)
+    task_skipped: bool = False           # service task yo'q: line item'siz yaratiladi
     duplicate: dict | None = None        # shu mashina + shu invoice raqamli mavjud work order
     meter_void: bool = False
     problems: list[str] = field(default_factory=list)   # bo'lsa hech narsa yaratilmaydi
@@ -136,6 +142,11 @@ class _Cached:
             age = time.monotonic() - self.at
             if self.value is None or age > self.ttl or (fresh and age > min_age):
                 self.value, self.at = self.loader(), time.monotonic()
+            return self.value
+
+    def reload(self):
+        with self.lock:
+            self.value, self.at = self.loader(), time.monotonic()
             return self.value
 
 
@@ -176,10 +187,12 @@ class RefData:
         self._labels = _Cached(lambda: [{"id": x["id"], "name": x.get("name") or ""} for x in client.raw_all("list_labels")], 1800)
         self._vendors: dict[str, dict] = {}
         self._vendors_meta: dict = {}
-        self._vendors_lock = threading.Lock()
-        self._vendors_checked = 0.0
+        self._vendors_lock = threading.Lock()       # faqat xotiradagi lug'at uchun (qisqa)
+        self._vendors_sync_lock = threading.Lock()  # bir vaqtda bitta sinxron (tarmoq so'rovi shu qulf ostida)
+        self.create_lock = threading.Lock()         # vendor/label yaratish: parallel invoyslar bittasini ikki marta yaratmasin
         self._book: M.TaskBook | None = None
         self._book_lock = threading.Lock()
+        self._ticks = 0
 
     # ---------------------------------------------------------------- kichik ma'lumotnomalar
     def _load_me(self) -> dict:
@@ -254,7 +267,7 @@ class RefData:
         return self._vehicles.get(fresh)
 
     def contacts(self, fresh: bool = False) -> list[dict]:
-        return self._contacts.get(fresh)
+        return self._contacts.get(fresh, min_age=CONTACTS_FRESH_MIN_AGE_S)
 
     def labels(self, fresh: bool = False) -> list[dict]:
         return self._labels.get(fresh)
@@ -263,35 +276,59 @@ class RefData:
         if self._labels.value is not None:
             self._labels.value.append({"id": lab["id"], "name": lab.get("name") or ""})
 
-    # ---------------------------------------------------------------- vendorlar (3000+: diskda kesh, qo'shimcha sinxron)
+    # ---------------------------------------------------------------- vendorlar (3000+: diskda kesh, fonda sinxron)
     @staticmethod
     def _vendor_row(v: dict) -> dict:
         return {k: v.get(k) for k in ("id", "name", "street_address", "city", "region", "postal_code", "phone", "service")}
 
-    def vendors(self) -> list[dict]:
+    def _vendors_from_disk(self) -> None:
         with self._vendors_lock:
-            if not self._vendors:
-                disk = _read_json(VENDORS_FILE, {})
-                self._vendors = {str(v["id"]): v for v in disk.get("vendors") or []}
-                self._vendors_meta = {k: disk.get(k) for k in ("full_at", "synced_at")}
+            if self._vendors or self._vendors_meta:
+                return
+            disk = _read_json(VENDORS_FILE, {})
+            self._vendors = {str(v["id"]): v for v in disk.get("vendors") or []}
+            self._vendors_meta = {k: disk.get(k) for k in ("full_at", "synced_at")}
+
+    def vendors(self, sync: bool = False) -> list[dict]:
+        """Vendorlar keshdan (fon har 5 daqiqada yangilaydi). sync=True — avval oxirgi o'zgarishlar olinadi
+        (bitta so'rov): yangi vendor yaratishdan oldin, saytda hozirgina qo'shilgani bo'lsa topilsin."""
+        self._vendors_from_disk()
+        if sync or not self._vendors:
+            self.sync_vendors(incremental_only=bool(self._vendors))
+        with self._vendors_lock:
+            return list(self._vendors.values())
+
+    def cached_vendors(self) -> list[dict]:
+        with self._vendors_lock:
+            return list(self._vendors.values())
+
+    def sync_vendors(self, incremental_only: bool = False) -> None:
+        """Kuniga bir marta to'liq (3000+ vendor, ~35 sahifa), qolgan safar faqat o'zgarganlar.
+        Tarmoq so'rovi paytida lug'at qulflanmaydi: sinxron ketayotganda ham invoyslar keshdan ishlayveradi."""
+        with self._vendors_sync_lock:
+            self._vendors_from_disk()
             now = time.time()
-            if now - self._vendors_checked < VENDORS_SYNC_EVERY_S and self._vendors:
-                return list(self._vendors.values())
-            meta = self._vendors_meta
-            if not self._vendors or now - float(meta.get("full_at") or 0) > VENDORS_FULL_SYNC_S:
+            meta = dict(self._vendors_meta)
+            full = not self._vendors or (now - float(meta.get("full_at") or 0) > VENDORS_FULL_SYNC_S and not incremental_only)
+            if full:
                 rows = self.client.raw_all("list_vendors", max_pages=200)
-                self._vendors = {str(v["id"]): self._vendor_row(v) for v in rows}
+                fresh = {str(v["id"]): self._vendor_row(v) for v in rows}
+                with self._vendors_lock:
+                    self._vendors = fresh
                 meta["full_at"] = now
-                log.info("Vendorlar to'liq yuklandi: %d", len(self._vendors))
+                log.info("Vendorlar to'liq yuklandi: %d", len(fresh))
             else:  # oxirgi sinxrondan beri o'zgarganlar (5 daqiqa zaxira bilan)
                 since = dt.datetime.fromtimestamp(float(meta.get("synced_at") or now) - 300, dt.timezone.utc)
                 rows = self.client.raw_all("list_vendors", {"filter": {"updated_at": {"gte": since.strftime("%Y-%m-%dT%H:%M:%SZ")}}})
-                for v in rows:
-                    self._vendors[str(v["id"])] = self._vendor_row(v)
+                with self._vendors_lock:
+                    for v in rows:
+                        self._vendors[str(v["id"])] = self._vendor_row(v)
             meta["synced_at"] = now
-            self._vendors_checked = now
-            _write_json(VENDORS_FILE, {**meta, "vendors": list(self._vendors.values())})
-            return list(self._vendors.values())
+            with self._vendors_lock:
+                self._vendors_meta = meta
+                snapshot = list(self._vendors.values())
+            if full or rows:
+                _write_json(VENDORS_FILE, {**meta, "vendors": snapshot})
 
     def add_vendor(self, v: dict) -> None:
         with self._vendors_lock:
@@ -344,6 +381,21 @@ class RefData:
         except Exception as e:  # noqa: BLE001 — isitish majburiy emas, birinchi xabarda qayta uriniladi
             log.warning("Work order ma'lumotnomalarini oldindan yuklab bo'lmadi: %s", e)
 
+    def refresh(self) -> None:
+        """Fon yangilash (REFRESH_EVERY_S da bir): invoys kelganda Fleetio'dan ro'yxat kutilmasin.
+        Mashinalar va vendorlar har safar, kontaktlar/labellar har SLOW_REFRESH_EVERY-safar, tasklar haftada."""
+        self._ticks += 1
+        jobs = [("vehicles", self._vehicles.reload), ("vendors", self.sync_vendors)]
+        if self._ticks % SLOW_REFRESH_EVERY == 0:
+            jobs += [("contacts", self._contacts.reload), ("labels", self._labels.reload)]
+        if not TASKS_FILE.exists() or time.time() - TASKS_FILE.stat().st_mtime > TASKS_MAX_AGE_S:
+            jobs.append(("service tasks", self.sync_tasks))
+        for name, job in jobs:
+            try:
+                job()
+            except Exception as e:  # noqa: BLE001 — keyingi safar yana uriniladi; so'rov yo'lida eski kesh ishlaydi
+                log.warning("Fon yangilash (%s) bo'lmadi: %s", name, e)
+
 
 class WorkOrders:
     def __init__(self, client: FleetioClient, writer: FleetioWriter | None = None, llm_chat=None,
@@ -366,13 +418,29 @@ class WorkOrders:
 
     # ---------------------------------------------------------------- reja (faqat o'qish)
     async def plan(self, inv: Invoice) -> Plan:
-        plan = await asyncio.to_thread(self._plan_sync, inv)
-        if not plan.problems and plan.task is None:
-            await self._pick_task(plan)
+        # service task'ni LLM bilan tanlash Fleetio tekshiruvlari bilan bir vaqtda boshlanadi (2-3 s tejaladi)
+        llm = self._start_llm(inv)
+        try:
+            plan = await asyncio.to_thread(self._plan_sync, inv)
+            if not plan.problems and plan.task is None and not plan.task_skipped:
+                await self._pick_task(plan, llm)
+        finally:
+            _drop(llm)
         return plan
 
+    def _start_llm(self, inv: Invoice) -> asyncio.Task | None:
+        if self.llm_chat is None or inv.problems or not inv.purpose:
+            return None
+        try:
+            book = self.ref.book()
+        except FleetioError:
+            return None
+        if book.local(inv.purpose)[0] is not None:
+            return None  # jamoaning eski tanlovi yoki o'rgatilgan moslik bor — LLM kerak emas
+        return asyncio.create_task(self._ask_llm(book, inv.purpose))
+
     def _plan_sync(self, inv: Invoice) -> Plan:
-        p = Plan(inv=inv, problems=list(inv.problems))
+        p = Plan(inv=inv, problems=list(inv.problems), warnings=list(inv.warnings))
         ref = self.ref
         try:
             p.me = ref.me()
@@ -456,38 +524,48 @@ class WorkOrders:
     def _plan_vendor(self, p: Plan) -> None:
         v = p.inv.vendor
         if v is None or not v.name:
-            p.problems.append("Vendor is missing: add the shop name and its address as the last lines of the message.")
+            p.warnings.append("No shop name in the message — Vendor left empty.")
             return
         p.vendor = M.match_vendor(v, self.ref.vendors())
+        if p.vendor is None:  # keshda yo'q: saytda hozirgina qo'shilgan bo'lishi mumkin — o'zgarishlarni olib qayta qidiramiz
+            p.vendor = M.match_vendor(v, self.ref.vendors(sync=True))
         if p.vendor is None:
-            if not v.has_location:
-                p.problems.append(f"Vendor “{fmt.esc(v.name)}” is not in Fleetio and the message has no address or phone "
-                                  f"to create it — add the shop's address line under its name.")
-                return
             p.vendor_new = M.vendor_payload(v)
+            if not v.has_location:
+                p.warnings.append(f"New vendor “{fmt.esc(v.name)}” is created with the name only (no address or phone in the message).")
         elif not p.vendor.get("service"):
             p.warnings.append(f"Vendor “{fmt.esc(str(p.vendor['name']))}” is not marked as a Service vendor in Fleetio.")
 
     def _plan_task(self, p: Plan) -> None:
         if not p.inv.purpose:
+            p.task_skipped = True
             return
         p.task, p.task_how = self.ref.book().local(p.inv.purpose)
 
     # ---------------------------------------------------------------- service task: LLM
-    async def _pick_task(self, p: Plan) -> None:
+    async def _pick_task(self, p: Plan, llm: asyncio.Task | None = None) -> None:
         book = self.ref.book()
         purpose = p.inv.purpose
         picked: list[int] = []
         confidence = ""
-        if self.llm_chat is not None:
+        if llm is None and self.llm_chat is not None:
+            llm = asyncio.create_task(self._ask_llm(book, purpose))
+        if llm is not None:
             try:
-                picked, confidence = await self._ask_llm(book, purpose)
+                picked, confidence = await llm
             except Exception as e:  # noqa: BLE001 — LLM bo'lmasa foydalanuvchining o'zi tugmadan tanlaydi
                 log.warning("Service task uchun LLM ishlamadi: %s", str(e)[:200])
         if picked and confidence in ("high", "medium"):
             p.task, p.task_how = book.by_id[picked[0]], "ai" if confidence == "high" else "ai?"
         else:
             p.task_options = book.options(purpose, picked)
+            if not p.task_options:
+                self.skip_task(p, f"No service task found for “{fmt.esc(purpose)}” — the work order has no line item.")
+
+    @staticmethod
+    def skip_task(p: Plan, why: str) -> None:
+        p.task, p.task_skipped, p.task_options = None, True, []
+        p.warnings.append(why)
 
     async def _ask_llm(self, book: M.TaskBook, purpose: str) -> tuple[list[int], str]:
         examples = "\n".join(f'- "{t}" -> {tid} {book.by_id[tid]["name"]} (x{n})' for t, tid, n in book.similar_examples(purpose))
@@ -509,15 +587,18 @@ class WorkOrders:
         return ids, str(data.get("confidence") or "low").lower()
 
     # ---------------------------------------------------------------- bajarish (yozish)
-    async def execute(self, plan: Plan, files: list[FileBlob], key: str) -> dict:
-        """Rejani Fleetio'da bajaradi. -> job (jurnal yozuvi). Xato bo'lsa job['status']='failed', job['error']."""
-        return await asyncio.to_thread(self._execute_sync, plan, files, key)
+    async def execute(self, plan: Plan, files: list[FileBlob], key: str, uploaded: list[dict] | None = None) -> dict:
+        """Rejani Fleetio'da bajaradi. -> job (jurnal yozuvi). Xato bo'lsa job['status']='failed', job['error'].
+        uploaded — oldindan (reja paytida) yuklangan fayllar (documents_attributes), files bilan bir tartibda."""
+        return await asyncio.to_thread(self._execute_sync, plan, files, key, uploaded or [])
 
-    def _execute_sync(self, plan: Plan, files: list[FileBlob], key: str) -> dict:
+    def _execute_sync(self, plan: Plan, files: list[FileBlob], key: str, uploaded: list[dict] | None = None) -> dict:
         job = self.ledger.get(key) or {}
         job.setdefault("steps", {})
         job.update(status="running", error="", unit=str(plan.vehicle["name"]), ref=plan.inv.ref,
-                   amount=str(plan.inv.amount), date=plan.inv.date.isoformat())
+                   amount=str(plan.inv.amount or ""), date=plan.inv.date.isoformat())
+        if uploaded and not job["steps"].get("documents"):
+            job["steps"]["documents"] = list(uploaded)
         self.ledger.put(key, job)
         try:
             self._run_steps(plan, files, job, key)
@@ -542,10 +623,10 @@ class WorkOrders:
         steps, inv, w = job["steps"], plan.inv, self.writer
         save = lambda: self.ledger.put(key, job)  # noqa: E731
 
-        # 1) vendor
+        # 1) vendor (xabarda ustaxona bo'lmasa — bo'sh)
         if plan.vendor:
             steps["vendor"] = {"id": plan.vendor["id"], "name": plan.vendor["name"], "created": False}
-        elif not steps.get("vendor"):
+        elif plan.vendor_new and not steps.get("vendor"):
             steps["vendor"] = self._step("vendor", lambda: self._create_vendor(plan))
             save()
 
@@ -557,6 +638,7 @@ class WorkOrders:
                 made[name] = self._step("label", lambda n=name: self._create_label(n))
                 save()
             label_ids.append(made[name])
+        steps["label_ids"] = label_ids
 
         # 3) fayl(lar)
         docs = steps.setdefault("documents", [])
@@ -564,8 +646,8 @@ class WorkOrders:
             docs.append(self._step("file upload", lambda f=f: w.upload(f.data, f.name, f.mime)))
             save()
 
-        # 4) issue
-        if not steps.get("issue"):
+        # 4) issue ("For" bo'lmasa issue yo'q — summary Fleetio'da majburiy; fayl va label work order'ga)
+        if inv.purpose and not steps.get("issue"):
             if job.get("failed_step") == "issue" and job.get("uncertain"):
                 steps["issue"] = self._step("issue", lambda: self._find_recent_issue(plan))
             if not steps.get("issue"):
@@ -592,6 +674,8 @@ class WorkOrders:
             save()
 
         # 6) tekshiruv: issue work order bilan yopildimi (xato bo'lsa natijaga ta'sir qilmaydi)
+        if not steps.get("issue"):
+            return
         try:
             issue = self.client.raw("get_issue", {"id": steps["issue"]["id"]})
             steps["issue"].update(number=issue.get("number"), state=issue.get("state"),
@@ -600,32 +684,39 @@ class WorkOrders:
             log.warning("Issue holatini o'qib bo'lmadi: %s", e)
 
     def _create_vendor(self, plan: Plan) -> dict:
-        try:
-            v = self.writer.create("create_vendor", plan.vendor_new)
-        except FleetioUncertain:
-            raise
-        except FleetioError as e:  # masalan "name has already been taken": shu nomli mavjud vendorga tushamiz
-            self.ref._vendors_checked = 0.0
-            same = M.same_name_vendor(plan.inv.vendor, self.ref.vendors())
-            if same is None:
+        with self.ref.create_lock:  # parallel invoyslar: birinchisi yaratadi, keyingisi o'shani topadi
+            same = M.match_vendor(plan.inv.vendor, self.ref.cached_vendors())
+            if same is not None:
+                return {"id": same["id"], "name": same["name"], "created": False}
+            try:
+                v = self.writer.create("create_vendor", plan.vendor_new)
+            except FleetioUncertain:
                 raise
-            log.warning("Vendor yaratilmadi (%s) — mavjud '%s' ishlatiladi", e, same["name"])
-            return {"id": same["id"], "name": same["name"], "created": False}
-        self.ref.add_vendor(v)
-        return {"id": v["id"], "name": v.get("name") or plan.vendor_new["name"], "created": True}
+            except FleetioError as e:  # masalan "name has already been taken": shu nomli mavjud vendorga tushamiz
+                same = M.same_name_vendor(plan.inv.vendor, self.ref.vendors(sync=True))
+                if same is None:
+                    raise
+                log.warning("Vendor yaratilmadi (%s) — mavjud '%s' ishlatiladi", e, same["name"])
+                return {"id": same["id"], "name": same["name"], "created": False}
+            self.ref.add_vendor(v)
+            return {"id": v["id"], "name": v.get("name") or plan.vendor_new["name"], "created": True}
 
     def _create_label(self, name: str) -> int:
-        try:
-            lab = self.writer.create("create_label", {"name": name})
-        except FleetioUncertain:
-            raise
-        except FleetioError:  # allaqachon bor bo'lishi mumkin
-            for x in self.ref._labels.get(fresh=True, min_age=0):
+        with self.ref.create_lock:
+            for x in self.ref.labels():  # parallel invoys hozirgina yaratgan bo'lishi mumkin
                 if x["name"].strip().lower() == name.lower():
                     return x["id"]
-            raise
-        self.ref.add_label(lab)
-        return lab["id"]
+            try:
+                lab = self.writer.create("create_label", {"name": name})
+            except FleetioUncertain:
+                raise
+            except FleetioError:  # allaqachon bor bo'lishi mumkin
+                for x in self.ref._labels.reload():
+                    if x["name"].strip().lower() == name.lower():
+                        return x["id"]
+                raise
+            self.ref.add_label(lab)
+            return lab["id"]
 
     def _find_recent_issue(self, plan: Plan) -> dict | None:
         """Oldingi urinishda javob kelmagan bo'lsa: issue aslida yaratilganmi (shu mashina, shu summary, oxirgi 1 soat)."""
@@ -655,15 +746,21 @@ class WorkOrders:
             "expected_completed_at": plan.when,
             "completed_at": plan.when,
             "contact_id": plan.driver["id"] if plan.driver else None,
-            "vendor_id": steps["vendor"]["id"],
+            "vendor_id": (steps.get("vendor") or {}).get("id"),
             "invoice_number": inv.ref,
             "purchase_order_number": inv.ref,
             "description": inv.description,
-            "issue_ids": [steps["issue"]["id"]],
-            "work_order_line_items_attributes": [{
-                "type": "WorkOrderServiceTaskLineItem", "item_type": "ServiceTask", "item_id": plan.task["id"],
-                "subtotal": float(inv.amount)}],
         }
+        if steps.get("issue"):
+            body["issue_ids"] = [steps["issue"]["id"]]
+        else:  # issue yo'q: fayl va label work order'ning o'ziga
+            body["documents_attributes"] = steps.get("documents")
+            body["label_ids"] = steps.get("label_ids")
+        if plan.task:
+            item = {"type": "WorkOrderServiceTaskLineItem", "item_type": "ServiceTask", "item_id": plan.task["id"]}
+            if inv.amount is not None:
+                item["subtotal"] = float(inv.amount)
+            body["work_order_line_items_attributes"] = [item]
         if plan.meter_void:  # jamoa service entry'larda ham shunday qiladi: qiymat 0, "void" belgilangan
             body["starting_meter_entry_attributes"] = {"value": 0, "void": True}
             body["ending_meter_same_as_start"] = True
@@ -674,12 +771,18 @@ def _clean(body: dict) -> dict:
     return {k: v for k, v in body.items() if v not in (None, "", [], {})}
 
 
+def _drop(task: asyncio.Task | None) -> None:
+    """Kerak bo'lmay qolgan fon vazifasi: tugamagan bo'lsa bekor, tugagan bo'lsa xatosi "o'qiladi" (log shovqini yo'q)."""
+    if task is None:
+        return
+    if task.done():
+        if not task.cancelled():
+            task.exception()
+    else:
+        task.cancel()
+
+
 # ====================================================================== matnlar (Telegram HTML, inglizcha)
-
-def web_link(kind: str, record_id) -> str:
-    """Fleetio saytidagi sahifa: https://secure.fleetio.com/<account>/work_orders/<id>."""
-    return f"https://secure.fleetio.com/{credentials()['account']}/{kind}/{record_id}"
-
 
 def _money(x) -> str:
     return f"${x:,.2f}"
@@ -694,9 +797,11 @@ def _plan_lines(p: Plan) -> list[str]:
     inv, e = p.inv, fmt.esc
     lines = [f"📅 {inv.date:%m/%d/%Y} · {e(str(p.status['name']))} · {p.rpc[1]}"]
     if p.task:
-        lines.append(f"🛠 {e(p.task['name'])} — <b>{_money(inv.amount)}</b>{_task_note(p.task_how)}")
-    vendor = p.vendor["name"] if p.vendor else p.vendor_new["name"]
-    lines.append(f"🏪 {e(str(vendor))}" + ("" if p.vendor else " <i>(new vendor)</i>"))
+        cost = f"<b>{_money(inv.amount)}</b>" if inv.amount is not None else "no amount"
+        lines.append(f"🛠 {e(p.task['name'])} — {cost}{_task_note(p.task_how)}")
+    if p.vendor or p.vendor_new:
+        vendor = p.vendor["name"] if p.vendor else p.vendor_new["name"]
+        lines.append(f"🏪 {e(str(vendor))}" + ("" if p.vendor else " <i>(new vendor)</i>"))
     who = f"Assigned to {e(p.driver['name'])} · " if p.driver else ""
     lines.append(f"👤 {who}Issued by {e(p.me['name'])}")
     if inv.ref:
@@ -716,7 +821,8 @@ def format_preview(p: Plan, n_files: int) -> str:
     labels = [x["name"] for x in p.labels] + [f"{x} (new)" for x in p.labels_new]
     out = [f"🧪 <b>Test mode — nothing was saved.</b> Would create a work order for unit <b>{e(str(p.vehicle['name']))}</b>:"]
     out += _plan_lines(p)
-    out.append(f"📌 Issue “{e(p.inv.purpose)}” · label {e(', '.join(labels) or '—')} · {n_files} file(s)")
+    issue = f"Issue “{e(p.inv.purpose)}”" if p.inv.purpose else "No issue"
+    out.append(f"📌 {issue} · label {e(', '.join(labels) or '—')} · {n_files} file(s)")
     out += [f"ℹ️ {w}" for w in p.warnings]
     return "\n".join(out)
 
@@ -728,7 +834,7 @@ def format_result(p: Plan, job: dict) -> str:
         out = [f"✅ <b>Work order {e(str(wo.get('number') or ''))}</b> created · unit <b>{e(str(p.vehicle['name']))}</b>"]
         out += _plan_lines(p)
         labels = [x["name"] for x in p.labels] + p.labels_new
-        bits = [f"📌 Issue {e(str(issue.get('number') or ''))} “{e(p.inv.purpose)}”"]
+        bits = [f"📌 Issue {e(str(issue.get('number') or ''))} “{e(p.inv.purpose)}”" if issue else "📌 No issue"]
         if labels:
             bits.append("label " + e(", ".join(labels)))
         bits.append(f"{len(steps.get('documents') or [])} file(s)")
@@ -804,13 +910,17 @@ def _cli(argv: list[str]) -> None:
         if plan.problems:
             print(fmt.strip_html(format_problems(plan)))
         else:
-            if plan.task is None:
+            if plan.task is None and plan.task_options:
                 print("Service task not decided; options:", [t["name"] for t in plan.task_options])
                 plan.task, plan.task_how = (plan.task_options or [{"id": 0, "name": "?"}])[0], "chosen"
             print(fmt.strip_html(format_preview(plan, 1)))
             print("\nIssue label ids:", [x["id"] for x in plan.labels], "| new labels:", plan.labels_new)
-            print("Work order body:", json.dumps(svc._wo_body(plan, {"vendor": {"id": (plan.vendor or {}).get("id", "<new>")},
-                                                                     "issue": {"id": "<new>"}}), ensure_ascii=False, indent=1))
+            steps = {}
+            if plan.vendor or plan.vendor_new:
+                steps["vendor"] = {"id": (plan.vendor or {}).get("id", "<new>")}
+            if inv.purpose:
+                steps["issue"] = {"id": "<new>"}
+            print("Work order body:", json.dumps(svc._wo_body(plan, steps), ensure_ascii=False, indent=1))
             if plan.duplicate:
                 print("DUPLICATE: work order", plan.duplicate["number"], "already has this invoice number for this vehicle")
     else:

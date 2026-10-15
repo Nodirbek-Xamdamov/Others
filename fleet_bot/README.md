@@ -16,28 +16,37 @@ Demo bot: **@david_prototype_bot**
 ## Fleetio rejimi
 
 1. `.env` ga `SECUREFLEET_KEY` (API key) qo'ying. `SECUREFLEET_ACCOUNT_TOKEN` va `DATA_SOURCE=fleetio` allaqachon bor.
-   Key `.env` dan har so'rovda o'qiladi — qo'shgach botni qayta ishga tushirish shart emas.
-2. Telegram'da botga oddiy so'z bilan yozing: "How many vehicles by status?", "Who is driving unit 417?",
-   "Overdue service reminders", "Open issues for 417". Tugmalar: 🚚 Fleet overview · 🛠 Service due · 📄 Renewals · ⚠️ Open issues.
-3. `/api` — oxirgi javob uchun Fleetio'ga yuborilgan so'rovlar (tekshirish uchun). `/reset` — suhbat kontekstini tozalash.
-4. **Login** (vaqtinchalik, `app/auth.py`): `.env` da `BOT_LOGIN` / `BOT_PASSWORD` bo'lsa, `/start` dan keyin bot login va parol
+   `.env` o'zgarsa darhol ko'rinadi — key qo'shgach botni qayta ishga tushirish shart emas.
+2. **Tezkor hisobotlar** (LLM'siz, `app/fleetio_reports.py`) — pastdagi tugmalar yoki buyruqlar:
+   🚚 Fleet overview `/overview` · 🛠 Service due `/service` · 📄 Renewals `/renewals` · ⚠️ Open issues `/issues` ·
+   🅿️ No driver `/nodriver` · mashina kartasi — faqat unit raqamini yozing (`417`, `unit 3871`, `0832 ED`) yoki `/unit 417`.
+   Ma'lumot Fleetio API'dan to'g'ridan-to'g'ri olinadi, sanashni Python qiladi: javob 0–1 s (LLM orqali 10–60 s edi).
+   Og'ir hisobotlar (service ~1300 reminder, renewals) fonda har 10 daqiqada tayyorlanadi; keshdan berilsa ma'lumot yoshi yoziladi.
+   Jadval rejimidan qolgan eski tugmalar (📊 Fleet overview, 🛠 PM status, 📄 Expirations) ham ishlaydi — bosilganda yangi klaviatura yuboriladi.
+3. Boshqa savollar oddiy so'z bilan: "Who is driving unit 417?", "Open issues for 417", "Repair costs of 417 this year" — LLM orqali.
+   Kutish paytida bot nima tekshirilayotganini yozib turadi ("🔎 Checking Fleetio: fuel entries…").
+4. `/api` — oxirgi javob uchun Fleetio'ga yuborilgan so'rovlar (tekshirish uchun). `/reset` — suhbat kontekstini tozalash.
+5. **Login** (vaqtinchalik, `app/auth.py`): `.env` da `BOT_LOGIN` / `BOT_PASSWORD` bo'lsa, `/start` dan keyin bot login va parol
    so'raydi (faqat shaxsiy chatda). Parol xabari chatdan o'chiriladi, 5 xato -> 15 daqiqa blok, `/logout` — chiqish.
    Kirganlar `data/authorized_users.json` da; login/parol o'zgartirilsa hamma qayta kiradi. Ikkala rejimda ishlaydi.
 
 ```
-Telegram ─> LLM (Groq) ─fleetio_get / fleetio_help─> Fleetio API (faqat GET) ─> LLM javob yozadi ─> Telegram
+Telegram ─> tugma / unit raqami ─> fleetio_reports (Python) ─────────────────────────────> Fleetio API (GET) ─> Telegram
+        └─> erkin savol ─> LLM ─fleetio_get / fleetio_help─> Fleetio API (faqat GET) ─> LLM javob yozadi ─> Telegram
 ```
 
 - **Tool'lar:** `data/fleetio_tools_readonly.json` — rasmiy OpenAPI hujjatidan yaratilgan 133 ta GET (to'liq o'qish huquqi).
-  Groq bepul tarifi (8K token/daqiqa) 133 ta tool ta'rifini ko'tarmaydi, shuning uchun LLM'ga 2 ta meta-tool beriladi:
-  `fleetio_get` (katalogdagi istalgan tool'ni bajaradi) va `fleetio_help` (parametrlarini ko'rsatadi); nomlar katalogi system prompt'da.
+  LLM'ga 133 ta tool ta'rifi o'rniga 2 ta meta-tool beriladi (token tejash): `fleetio_get` (katalogdagi istalgan tool'ni
+  bajaradi) va `fleetio_help` (parametrlarini ko'rsatadi); nomlar katalogi system prompt'da.
 - **Xavfsizlik** (`app/fleetio.py`): faqat GET, faqat katalogdagi yo'llar, noma'lum parametrlar tashlanadi; kalitlar faqat `.env` dan,
   log va `/api` chiqishida kalit yo'q. Yozish/o'chirish tool'lari botga berilmagan.
 - **Aniqlik:** "nechta / status bo'yicha" savollarida sanashni Python qiladi (`count_by`, 1000 tagacha yozuv), LLM faqat natijani yozadi.
+- **Tezlik:** Fleetio'ga so'rovlar bitta keep-alive ulanishlar havzasi orqali ketadi (`app/net.py`, httpx2) — har so'rovga yangi
+  TCP+TLS ulanish ochilmaydi (~0.3 s tejaladi). Bir raunddagi tool-chaqiruvlar parallel. Ro'yxat yozuvlariga mashina nomi
+  qo'shiladi (`vehicle_id` -> `vehicle_name`), shuning uchun model har mashina uchun alohida `get_vehicle` chaqirmaydi.
 - **Token tejash:** javob ixchamlanadi (bo'sh maydonlar, rasm havolalari, 0 hisoblagichlar olib tashlanadi, ~5000 belgigacha).
-- **Cheklov:** murakkab savol 2–4 ta LLM chaqiruv (~2K token har biri). Groq bepul tarifida daqiqasiga 1–3 savol;
-  limitga tushsa bot o'zi keyingi modelga o'tadi. Ko'p foydalanuvchi uchun Groq pullik tarifi yoki OpenAI (`.env` o'zgaradi xolos).
-- Testlar: `python -m tests.test_offline` (8-bo'lim — Fleetio, soxta HTTP bilan). Terminalda: `python ask.py "Who drives 417?"`.
+- **Cheklov:** murakkab savol 2–4 ta LLM chaqiruv. Limitga (429) tushsa bot kutmasdan `LLM_FALLBACK_MODEL` ga o'tadi.
+- Testlar: `python -m tests.test_offline`, `python -m tests.test_fast` (keep-alive, hisobotlar). Terminalda: `python ask.py "Who drives 417?"`.
 
 ## Work order (invoys fayli -> Fleetio)
 
@@ -46,7 +55,7 @@ Ruxsatli chatga (`.env`: `WO_CHAT_IDS`) invoys fayli (rasm/PDF) quyidagi caption
 
 ```
 Unit# 3968
-Driver: Reynaldo Suarez
+Driver: John Smith
 Date: 10/05/2026
 Amount: $ 70
 For: Truck tire repair
@@ -65,15 +74,21 @@ Tread Source Commercial Tires & Service
 | Vehicle | `Unit` (Trailer qatori bo'lib, ish faqat treylerga tegishli bo'lsa — treyler) |
 | Status | doim Completed |
 | Repair Priority Class | `For`/`Note` da Roadside, Road side, RS, RC bo'lsa Emergency, aks holda Scheduled |
-| Issued by | API key egasi (Charlie Pearson) |
+| Issued by | API key egasi (`GET /users/me`) |
 | Issue / Start / Expected / Actual Completion Date | `Date` |
 | Assigned To | `Driver` (kontaktlardan; topilmasa bo'sh qoladi) |
-| Vendor | oxirgi blok: nom + manzil + telefon bo'yicha qidiriladi, topilmasa yaratiladi |
+| Vendor | oxirgi blok: nom + manzil + telefon bo'yicha qidiriladi, topilmasa yaratiladi (manzili bo'lmasa faqat nomi bilan); ustaxona yozilmasa — bo'sh |
 | Invoice Number, PO Number | `Ref` |
 | Description | xabar matni (ustaxona blokisiz) |
-| Issue (yangi) | Summary = `For`, No Priority, Reported = `Date`, Label = `Responsible`, Reference Number = `Ref`, fayl(lar) Documents'da |
-| Line item | `For` bo'yicha service task, Subtotal = `Amount` |
+| Issue (yangi) | Summary = `For`, No Priority, Reported = `Date`, Label = `Responsible`, Reference Number = `Ref`, fayl(lar) Documents'da. `For` bo'lmasa issue yo'q — fayl va label work order'ga |
+| Line item | `For` bo'yicha service task, Subtotal = `Amount` (Amount bo'lmasa narxsiz, task topilmasa line item'siz) |
 
+- **Majburiy faqat `Unit` va `Date`** (Fleetio'ning o'zida ham Vehicle va Issue Date majburiy). Qolganlari bo'lmasa work order
+  ular bo'sh holda yaratiladi va javobda ℹ️ bilan aytiladi. Unit topilmasa/noaniq bo'lsa, sana yo'q/noto'g'ri bo'lsa — yaratilmaydi.
+- **Tezlik:** bir nechta invoys bir vaqtda (parallel) ishlanadi; bitta vendor/label ikki marta yaratilmaydi (`RefData.create_lock`).
+  Fayl Telegram'dan olinib Fleetio'ga yuklanishi va service task'ni LLM bilan tanlash reja bilan bir vaqtda boshlanadi.
+  Ma'lumotnomalar fonda yangilanadi (mashinalar va vendorlar 5 daqiqada, kontaktlar/labellar 30 daqiqada, vendorlar to'liq — kuniga),
+  shuning uchun invoys kelganda Fleetio ro'yxatlari kutilmaydi.
 - **Kod:** `app/wo_parser.py` (matnni ajratish), `app/wo_match.py` (Fleetio yozuvlariga moslash), `app/workorders.py`
   (reja + yaratish + jurnal), `app/wo_bot.py` (Telegram), `app/fleetio_write.py` (yozish: faqat vendor/label/issue/work order
   yaratish va fayl yuklash; savol-javob qismi avvalgidek faqat GET).
@@ -86,7 +101,7 @@ Tread Source Commercial Tires & Service
   `python -m app.workorders check xabar.txt`. Ro'yxatlarni yangilash: `python -m app.workorders tasks` / `examples`.
 - **Guruh:** bot hamma xabarni ko'rishi uchun BotFather'da `/setprivacy -> Disable` (keyin botni guruhga qayta qo'shish)
   yoki botni guruhda admin qilish kerak. Guruhda bot faqat invoys xabarlariga va o'ziga yozilgan (@mention / reply) savollarga javob beradi.
-- Testlar: `python -m tests.test_workorders`.
+- Testlar: `python -m tests.test_workorders` (parallel invoyslar va fon keshi ham).
 
 ---
 
@@ -120,7 +135,7 @@ Internetsiz testlar (jadval, SQL xavfsizligi, handlerlar): `python -m tests.test
 
 Savolni o'zbek, rus yoki ingliz tilida yozish mumkin — **bot har doim ingliz tilida javob beradi**.
 
-- "417", "417 unit kimda?", "Quentin Brownlee qaysi mashinada?", "0397" (VIN/plate oxiri)
+- "417", "417 unit kimda?", "John Smith qaysi mashinada?", "0397" (VIN/plate oxiri)
 - "PM muddati o'tib ketgan mashinalar", "PM gacha 2000 mildan kam qolganlar"
 - "Keyingi 60 kunda inspeksiyasi tugaydiganlar", "Cab card muddati o'tganlar"
 - "Riverview guruhida nechta mashina bor?", "Guruhlar bo'yicha haydovchisiz mashinalar soni"

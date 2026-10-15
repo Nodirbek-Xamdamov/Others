@@ -18,6 +18,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from . import net
 from .fleetio import FleetioError, credentials, env
 
 log = logging.getLogger("fleetio_write")
@@ -66,10 +67,10 @@ def _error_text(e: urllib.error.HTTPError) -> str:
 
 
 class FleetioWriter:
-    """opener testlarda almashtiriladi (urllib.request.urlopen imzosi bilan)."""
+    """opener testlarda almashtiriladi (urllib.request.urlopen imzosi bilan); odatda keep-alive havzasi (net.py)."""
 
     def __init__(self, opener=None):
-        self._open = opener or urllib.request.urlopen
+        self._open = opener or net.urlopen
 
     @staticmethod
     def _headers(creds: dict, json_body: bool) -> dict:

@@ -2,7 +2,8 @@
 
 Endpointlar katalogi `data/fleetio_tools_readonly.json` (rasmiy OpenAPI hujjatidan yaratilgan, 133 ta GET).
 Xavfsizlik: faqat GET yuboriladi va faqat katalogdagi yo'llarga; noma'lum parametrlar tashlab yuboriladi.
-Kalitlar har so'rovda `.env` dan o'qiladi — key keyinroq qo'shilsa, botni qayta ishga tushirish shart emas.
+Kalitlar `.env` dan o'qiladi (fayl o'zgarsa darhol ko'rinadi) — key keyinroq qo'shilsa, restart shart emas.
+So'rovlar bitta keep-alive ulanishlar havzasi orqali ketadi (`net.py`): har so'rovga yangi TLS ulanish ochilmaydi.
 LLM'ga ketadigan javob ixchamlanadi (bo'sh maydonlar, rasm havolalari, 0 hisoblagichlar olib tashlanadi),
 sanash/guruhlash (count_by) esa Python'da aniq hisoblanadi.
 """
@@ -22,6 +23,7 @@ from pathlib import Path
 
 from dotenv import dotenv_values
 
+from . import net
 from .config import ROOT
 
 log = logging.getLogger("fleetio")
@@ -45,9 +47,27 @@ class FleetioError(Exception):
     pass
 
 
+_env_cache: tuple[tuple, dict[str, str]] | None = None
+
+
+def _env_file() -> dict[str, str]:
+    """.env qiymatlari. Fayl faqat o'zgarganda (vaqti/hajmi) qayta o'qiladi — har xabarda diskdan parse qilinmaydi."""
+    global _env_cache
+    try:
+        st = ENV_FILE.stat()
+    except OSError:
+        return {}
+    stamp = (str(ENV_FILE), st.st_mtime_ns, st.st_size)
+    cached = _env_cache
+    if cached is None or cached[0] != stamp:
+        cached = (stamp, {k: (v or "").strip() for k, v in dotenv_values(ENV_FILE).items()})
+        _env_cache = cached
+    return cached[1]
+
+
 def credentials() -> dict[str, str]:
-    """Kalitlar: avval .env (har safar yangidan o'qiladi), bo'lmasa muhit o'zgaruvchilari."""
-    file_vals = {k: (v or "").strip() for k, v in dotenv_values(ENV_FILE).items()} if ENV_FILE.exists() else {}
+    """Kalitlar: avval .env (o'zgarsa darhol ko'rinadi), bo'lmasa muhit o'zgaruvchilari."""
+    file_vals = _env_file()
 
     def get(name: str, default: str = "") -> str:
         return file_vals.get(name) or os.getenv(name, "").strip() or default
@@ -58,9 +78,13 @@ def credentials() -> dict[str, str]:
 
 
 def env(name: str, default: str = "") -> str:
-    """Bitta sozlama: avval .env (har safar yangidan o'qiladi — restart shart emas), bo'lmasa muhit o'zgaruvchisi."""
-    file_vals = dotenv_values(ENV_FILE) if ENV_FILE.exists() else {}
-    return (file_vals.get(name) or "").strip() or os.getenv(name, "").strip() or default
+    """Bitta sozlama: avval .env (o'zgarsa darhol ko'rinadi — restart shart emas), bo'lmasa muhit o'zgaruvchisi."""
+    return _env_file().get(name) or os.getenv(name, "").strip() or default
+
+
+def web_link(kind: str, record_id) -> str:
+    """Fleetio saytidagi sahifa: https://secure.fleetio.com/<account>/work_orders/<id>."""
+    return f"https://secure.fleetio.com/{credentials()['account']}/{kind}/{record_id}"
 
 
 class Catalog:
@@ -176,6 +200,13 @@ def _project(rec: dict, fields: list[str]) -> dict:
         v = _get_path(rec, f)
         if v is not None and v != "":
             out[f] = v
+        # vehicle_id so'ralsa, yozuvda bor nomi (vehicle.name / vehicle_name) ham qo'shiladi: aks holda model
+        # har bir id uchun alohida get_vehicle chaqiradi (bitta javobda 17 ta qo'shimcha so'rov ko'rilgan)
+        if f.endswith("_id") and "." not in f:
+            base = f[:-3]
+            name = rec.get(f"{base}_name") or _get_path(rec, f"{base}.name")
+            if name and f"{base}_name" not in fields and f"{base}.name" not in fields:
+                out[f"{base}_name"] = name
     if "id" in rec and "id" not in out:
         out = {"id": rec["id"], **out}
     return out
@@ -186,7 +217,7 @@ class FleetioClient:
 
     def __init__(self, catalog: Catalog | None = None, opener=None):
         self.catalog = catalog or Catalog()
-        self._open = opener or urllib.request.urlopen
+        self._open = opener or net.urlopen
         self._cache: dict[str, tuple[float, dict]] = {}
 
     def configured(self) -> bool:
