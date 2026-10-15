@@ -43,7 +43,8 @@ check(count("SELECT COUNT(DISTINCT unit_number) FROM trucks") == 157, "naiv COUN
 check(count("SELECT COUNT(*) FROM rental_trucks") == n["Rental trucks"], "rental_trucks view")
 check(count("SELECT COUNT(*) FROM inactive_trucks") == n["Inactive Trucks"], "inactive_trucks view")
 r = data.conn.execute("SELECT driver, vin, current_mileage, miles_until_pm FROM trucks WHERE unit_number='417'").fetchone()
-check(r == ("Quentin Brownlee", "3AKJHHDR2NSMZ0397", 764483, -2866), "unit 417 qiymatlari to'g'ri")
+DRIVER_417 = r[0]  # haqiqiy ism kodda yozilmaydi (repo ochiq) — jadvaldan olinadi
+check(bool(DRIVER_417) and len(r[1]) == 17 and r[1].endswith("0397") and r[2:] == (764483, -2866), "unit 417 qiymatlari to'g'ri")
 check(count("SELECT COUNT(*) FROM trucks WHERE driver IS NULL AND location_note LIKE '%YARD%'") > 0,
       "'NEW YARD' haydovchi emas, location_note'ga tushgan")
 tables = {t.name for t in data.tables}
@@ -66,7 +67,7 @@ check(h == "<b>Total</b>: &lt;5&gt; <code>VIN</code>\n• a\n• 417 · A\n• 4
 
 print("4) Tezkor buyruqlar")
 u = quick.unit_lookup(sql, "417").text
-check("Quentin Brownlee" in u and "overdue" in u, "/unit 417")
+check(DRIVER_417 in u and "overdue" in u, "/unit 417")
 check("No truck found" in quick.unit_lookup(sql, "zzzz999").text, "/unit topilmasa")
 u = quick.unit_lookup(sql, "3871").text
 check(u.startswith("🚛 <b>Unit 3871</b>") and "Active fleet" in u and "Also in CAC list" in u and u.count("🚛") == 1,
@@ -82,14 +83,16 @@ check("Cab card" in quick.expiring(sql, 60).text, "/expiring")
 check("Cab card" not in quick.expiring(sql, 30, ("insp",)).text, "/expiring faqat inspeksiya")
 check("Trucks without a driver: 43" in quick.no_driver(sql).text, "/nodriver")
 check("<b>157 trucks</b>" in quick.stats(sql).text, "/stats = 157")
-check("Taj Green" in quick.driver_lookup(sql, "Taj Green").text, "haydovchi bo'yicha karta")
+other = data.conn.execute("SELECT driver FROM trucks WHERE driver IS NOT NULL AND unit_number <> '417' "
+                          "ORDER BY unit_number LIMIT 1").fetchone()[0]
+check(other in quick.driver_lookup(sql, other).text, "haydovchi bo'yicha karta")
 
 print("5) Router (LLM'siz)")
 router = Router(sql)
 check(all(UNIT_ONLY.match(t) for t in ("417", "0832 ED", "unit 3871", "#417", "3871?"))
       and not any(UNIT_ONLY.match(t) for t in ("417 unit kimda?", "PM muddati o'tganlar")), "faqat raqam -> tezkor qidiruv")
 cases = {
-    "417 unit kimda?": "Unit 417", "Quentin Brownlee qaysi mashinada?": "Unit 417", "9693 JCE": "Unit 9693 JCE",
+    "417 unit kimda?": "Unit 417", f"{DRIVER_417} qaysi mashinada?": "Unit 417", "9693 JCE": "Unit 9693 JCE",
     "Nechta mashina bor?": "Fleet overview", "Сколько машин?": "Fleet overview", "How many trucks do we have?": "Fleet overview",
     "PM muddati o‘tgan mashinalar": "PM status", "PM overdue trucks": "PM status",
     "Keyingi 60 kunda inspeksiyasi tugaydiganlar": "within 60 days", "Cab card muddati o'tganlar": "Cab card",
@@ -196,7 +199,7 @@ async def tg_test():
 
     m = await send("/start")
     check("Hello" in m.text and "157 trucks" in m.text and m.reply_markup is not None, "/start + menyu tugmalari")
-    check("Quentin" in (await send("/unit 417", 2)).text, "/unit orqali")
+    check(DRIVER_417.split()[0] in (await send("/unit 417", 2)).text, "/unit orqali")
     check("Fleet overview" in (await send(BTN_STATS, 3)).text, "menyu tugmasi -> statistika")
     before = len(session.sent)
     m = await send("Which trucks are overdue on PM and who drives them?", 4)
@@ -359,7 +362,7 @@ fa.client.chat.completions.create = (lambda **kw: asyncio.sleep(0, SimpleNamespa
     message=SimpleNamespace(content='<tool_call>\n<function=fleetio_help>', tool_calls=None))])))
 check(asyncio.run(fa.answer("x")).text.startswith("Sorry"), "model tool'ni matn qilib yozsa foydalanuvchiga chiqmaydi")
 
-from app.bot import BTN_F_SERVICE, F_CANNED, FleetioState, build_fleetio_dispatcher  # noqa: E402
+from app.bot import BTN_F_OVERVIEW, BTN_NODRV, BTN_STATS, FleetioState, build_fleetio_dispatcher  # noqa: E402
 
 
 async def tg_fleetio_test():
@@ -368,6 +371,7 @@ async def tg_fleetio_test():
     state = FleetioState(fleetio_agent())
     dp = build_fleetio_dispatcher(state)
     user, chat = User(id=42, is_bot=False, first_name="Test"), Chat(id=1, type="private")
+    llm_calls = state.agent.client.chat.completions.calls
 
     async def send(text, uid=1):
         entities = [MessageEntity(type="bot_command", offset=0, length=len(text.split()[0]))] if text.startswith("/") else None
@@ -379,14 +383,25 @@ async def tg_fleetio_test():
     check("live data from Fleetio" in m.text and m.reply_markup is not None and "not connected" not in m.text,
           "fleetio /start + tugmalar")
     before = len(session.sent)
-    m = await send(BTN_F_SERVICE, 2)
-    check(len(session.sent) == before + 2 and isinstance(m, EditMessageText) and "Vehicles by status" in m.text,
-          "tugma: 'Checking Fleetio…' -> javobga tahrirlanadi")
-    user_msgs = [x for x in state.agent.client.chat.completions.calls[0]["messages"] if x["role"] == "user"]
-    check(user_msgs[-1]["content"] == F_CANNED[BTN_F_SERVICE], "tugma tayyor savolga aylandi")
-    check("GET /vehicles?" in (await send("/api", 3)).text, "/api oxirgi Fleetio so'rovlarini ko'rsatadi")
+    m = await send(BTN_F_OVERVIEW, 2)
+    check(len(session.sent) == before + 2 and isinstance(m, EditMessageText) and "Fleet overview" in m.text
+          and "5 vehicles" in m.text and "Active: <b>3</b>" in m.text and not llm_calls,
+          "tugma -> tayyor hisobot ('Checking Fleetio…' tahrirlanadi), LLM chaqirilmaydi")
+    m = await send(BTN_STATS, 3)
+    kb = [b.text for row in (m.reply_markup.keyboard if m.reply_markup else []) for b in row]
+    check(isinstance(m, SendMessage) and "Fleet overview" in m.text and BTN_F_OVERVIEW in kb and BTN_NODRV in kb,
+          "eski (jadval) tugmasi ham ishlaydi va yangi klaviatura yuboriladi")
+    m = await send("101", 4)
+    check("T-101" in m.text and "Test Driver" in m.text and "Open in Fleetio" in m.text and not llm_calls,
+          "faqat unit raqami -> mashina kartasi, LLM'siz")
+    before = len(session.sent)
+    m = await send("Who drives T-101?", 5)
+    texts = [x.text for x in session.sent[before:]]
+    check(any("Checking Fleetio: vehicles" in t for t in texts) and "Vehicles by status" in m.text and len(llm_calls) == 2,
+          "LLM savoli: jarayon ko'rinadi ('Checking Fleetio: vehicles…') -> javob")
+    check("GET /vehicles?" in (await send("/api", 6)).text, "/api oxirgi Fleetio so'rovlarini ko'rsatadi")
     tmp_env.write_text("SECUREFLEET_KEY=\nSECUREFLEET_ACCOUNT_TOKEN=acct-test\n", encoding="utf-8")
-    check("not connected" in (await send("Who drives T-101?", 4)).text, "key yo'q -> LLM chaqirilmaydi, ogohlantirish")
+    check("not connected" in (await send("Which trucks are idle?", 7)).text, "key yo'q -> LLM chaqirilmaydi, ogohlantirish")
 
 
 asyncio.run(tg_fleetio_test())

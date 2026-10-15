@@ -20,6 +20,7 @@ log = logging.getLogger("fleetio_agent")
 
 MAX_ROUNDS = 5
 ESCALATE_AFTER_ROUNDS = 2  # arzon (simple) model shuncha tool-raunddan keyin ham tugamasa, aqlli modelga o'tadi
+MAX_TOKENS = 2500          # 1500 da ko'p parallel tool-chaqiruv yarmida kesilib qolgan (bo'sh tool nomi xatosi)
 
 # system prompt'da filtrlari ko'rsatiladigan asosiy ro'yxatlar (qolganlari uchun fleetio_help)
 KEY_LISTS = ["list_vehicles", "list_vehicle_assignments", "list_contacts", "list_issues", "list_faults",
@@ -44,6 +45,7 @@ RULES
 - "How many" or "by status / type / group" -> set all_pages=true and count_by=<field>; use the *_name field (vehicle_status_name, vehicle_type_name, group_name), never *_id. "total" and "counts" are exact: report them as given, never recount records yourself.
 - Plain "list X" / "show X" requests (not a count) -> never set all_pages; call the list tool once with its default per_page. Only a handful of items are shown to the user anyway, so fetching every page just wastes time — if more_available comes back true, just say the list is partial instead of fetching the rest.
 - Request only the fields you need (fields=[...]) to keep results small. Don't repeat a tool call with the exact same tool+params you already made this conversation — reuse that result.
+- List records already carry the vehicle name (vehicle.name, or vehicle_name next to vehicle_id): never call get_vehicle just to turn ids into names.
 - Today is {today}. Overdue = due date before today.
 - Answer concisely: a short bold heading, then one line per item ("• name — detail"). No tables, never paste raw JSON — always summarize. If more_available is true, say the list is partial. If there are more than ~15 items, list only the first 15 and add "… and N more" — never write one line per record for long lists.
 - Never show API keys, tokens, shared_key or authorization values. Share phones, emails, addresses or license numbers only when the user asks for them.
@@ -71,6 +73,17 @@ TOOLS = [
 ]
 
 _GET_ARGS = {"tool", "params", "fields", "count_by", "all_pages"}
+
+
+def _label(tc) -> str:
+    """Tool-chaqiruv -> foydalanuvchiga ko'rinadigan qisqa nom: list_service_reminders -> 'service reminders'."""
+    if tc.function.name != "fleetio_get":
+        return ""
+    try:
+        tool = str(json.loads(tc.function.arguments or "{}").get("tool") or "")
+    except (json.JSONDecodeError, AttributeError):
+        return ""
+    return tool.removeprefix("list_").removeprefix("get_").replace("_", " ")
 _RAW_TOOL_TEXT = re.compile(r"<tool_call>|<function=|\"name\"\s*:\s*\"fleetio_")
 _FINAL_NUDGE = "Now answer my question using only the data above. Do not call any tools."
 _SORRY = "Sorry, I couldn't prepare an answer. Please try rephrasing the question."
@@ -136,7 +149,8 @@ class FleetioAgent(LLMChat):
             return json.dumps({"error": f"bad arguments: {e}"})
 
     # ------------------------------------------------------------------ pipeline
-    async def answer(self, question: str, history: list[dict] | None = None) -> Answer:
+    async def answer(self, question: str, history: list[dict] | None = None, progress=None) -> Answer:
+        """progress(label) — ixtiyoriy: har tool-raund oldidan nima tekshirilayotgani ("service reminders")."""
         messages: list[dict] = [{"role": "system", "content": self.system_prompt()}]
         for h in history or []:
             messages.append({"role": h["role"], "content": h["content"][:HISTORY_CHARS]})
@@ -149,7 +163,7 @@ class FleetioAgent(LLMChat):
             if last:
                 messages.append({"role": "user", "content": _FINAL_NUDGE})
             models = self.models if escalated else self.simple_models
-            resp = await self._chat(messages, tools=TOOLS, tool_choice="none" if last else "auto", max_tokens=1500,
+            resp = await self._chat(messages, tools=TOOLS, tool_choice="none" if last else "auto", max_tokens=MAX_TOKENS,
                                     models=models)
             msg = resp.choices[0].message
             if not msg.tool_calls:
@@ -173,6 +187,13 @@ class FleetioAgent(LLMChat):
                 content = await asyncio.to_thread(self.run_tool, tc.function.name, args, local_calls)
                 return tc.id, content, local_calls
 
+            if progress is not None:
+                labels = list(dict.fromkeys(filter(None, (_label(tc) for tc in msg.tool_calls))))
+                if labels:
+                    try:
+                        await progress(", ".join(labels[:3]) + (" …" if len(labels) > 3 else ""))
+                    except Exception as e:  # noqa: BLE001 — holat xabari javobga ta'sir qilmasin
+                        log.debug("progress: %s", e)
             # bir raunddagi bir nechta tool-chaqiruv bir vaqtda (ketma-ket emas) — Fleetio kutish vaqti qo'shilmaydi
             for tc_id, content, local_calls in await asyncio.gather(*(_run_one(tc) for tc in msg.tool_calls)):
                 messages.append({"role": "tool", "tool_call_id": tc_id, "content": content})

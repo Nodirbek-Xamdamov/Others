@@ -65,7 +65,7 @@ def _name_tokens(s: str) -> list[str]:
 
 
 def match_contact(name: str, contacts: list[dict], prefer_id: int | None = None) -> dict | None:
-    """'Reynaldo Suarez' -> kontakt 'Reynaldo Lazaro Suarez'. Noaniq bo'lsa None (taxmin qilinmaydi).
+    """'John Smith' -> kontakt 'John Michael Smith'. Noaniq bo'lsa None (taxmin qilinmaydi).
 
     prefer_id — shu mashinaga hozir biriktirilgan haydovchi: teng holatlarda ustun, bitta so'zli ism faqat shunga mos keladi."""
     want = _name_tokens(name)
@@ -95,7 +95,7 @@ def match_contact(name: str, contacts: list[dict], prefer_id: int | None = None)
     if len(want) == 1:
         return None
     if len({toks for _, toks in top}) > 1:
-        return None  # har xil odamlar ("Jose Manuel Garcia" / "Jose Luis Garcia")
+        return None  # har xil odamlar ("Juan Manuel Perez" / "Juan Luis Perez")
     # bir odamning takror kartochkalari: haydovchi deb belgilangani, keyin eng yangisi
     return max((c for c, _ in top), key=lambda c: (bool(c.get("vehicle_operator")), int(c.get("id") or 0)))
 

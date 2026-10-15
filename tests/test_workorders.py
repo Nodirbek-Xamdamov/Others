@@ -8,8 +8,11 @@ import io
 import json
 import sys
 import tempfile
+import time
 import urllib.error
+from collections import Counter
 from pathlib import Path
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -37,7 +40,7 @@ workorders.ALIASES_FILE = tmp / "aliases.json"
 
 DAY = dt.date.today() - dt.timedelta(days=2)
 SAMPLE = f"""Unit# 3968
-Driver: Reynaldo Suarez
+Driver: Ramiro Salazar
 Date: {DAY:%m/%d/%Y}
 Amount: $ 70
 For: Truck tire repair
@@ -60,7 +63,7 @@ def check(cond, name):
 
 print("1) Xabarni ajratish")
 inv = parse_invoice(SAMPLE)
-check(inv.ok and inv.unit == "3968" and inv.drivers == ["Reynaldo Suarez"] and inv.date == DAY, "unit / driver / date")
+check(inv.ok and inv.unit == "3968" and inv.drivers == ["Ramiro Salazar"] and inv.date == DAY, "unit / driver / date")
 check(str(inv.amount) == "70.00" and inv.ref == "216117" and inv.purpose == "Truck tire repair", "amount / ref / for")
 check(inv.note == "Paid with EFS\nMoney Transfer code 3885738103" and inv.responsible == "Owner of the truck", "note davomi, responsible")
 v = inv.vendor
@@ -80,6 +83,11 @@ check(old.unit == "8658" and old.trailer == "44319" and old.drivers == ["A B", "
       and old.vendor is None and old.responsible == "Company CAC" and any("not a valid date" in p for p in old.problems),
       "eski formatlar: Truck #, Trailer#, Report Reference, 'CAC' ustaxona emas, xato sana")
 check(looks_like_invoice(SAMPLE) and not looks_like_invoice("Unit 3968 photo") and not looks_like_invoice(None), "invoys formatini tanish")
+bare = parse_invoice(f"Unit# 3968\nDate: {DAY:%m/%d/%Y}")
+check(looks_like_invoice(f"Unit# 3968\nDate: {DAY:%m/%d/%Y}") and bare.ok and bare.amount is None and not bare.purpose
+      and bare.vendor is None and len(bare.warnings) == 2, "faqat Unit + Date: xato emas, Amount/For ogohlantirish")
+check(not parse_invoice(SAMPLE.replace(f"Date: {DAY:%m/%d/%Y}", "")).ok
+      and parse_invoice(SAMPLE.replace("$ 70", "seventy")).ok, "Date majburiy, noto'g'ri Amount esa yo'q")
 
 print("2) Moslash")
 VEH = [{"id": 1, "name": "3968", "vehicle_type_id": 10, "driver": {"id": 21}}, {"id": 2, "name": "9693 JCE"},
@@ -89,15 +97,15 @@ check(M.match_vehicle("3968", VEH)[0]["id"] == 1 and M.match_vehicle("4201", VEH
       and M.match_vehicle("839", VEH)[0]["id"] == 5 and M.match_vehicle("9693 jce", VEH)[0]["id"] == 2, "unit -> vehicle")
 none, why = M.match_vehicle("9693", VEH)
 check(none is None and "several" in why and M.match_vehicle("7777", VEH)[0] is None, "noaniq / topilmagan unit — taxminsiz")
-CON = [{"id": 21, "name": "Reynaldo Lazaro Suarez", "vehicle_operator": True}, {"id": 22, "name": "Reynaldo Suarez Lazaro"},
-       {"id": 23, "name": "Jose Manuel Garcia"}, {"id": 24, "name": "Jose Luis Garcia"}, {"id": 25, "name": "Darell Kenard Smith"}]
-check(M.match_contact("Reynaldo Suarez", CON)["id"] == 21 and M.match_contact("Reinaldo Suares", CON)["id"] == 21, "haydovchi (o'rta ism, imlo)")
-check(M.match_contact("Jose Garcia", CON) is None and M.match_contact("Jose Garcia", CON, 24)["id"] == 24
-      and M.match_contact("LaDarrell Smith", CON) is None and M.match_contact("Jose", CON) is None, "noaniq ism — bo'sh qoladi")
+CON = [{"id": 21, "name": "Ramiro Lazaro Salazar", "vehicle_operator": True}, {"id": 22, "name": "Ramiro Salazar Lazaro"},
+       {"id": 23, "name": "Juan Manuel Perez"}, {"id": 24, "name": "Juan Luis Perez"}, {"id": 25, "name": "Darnell Keon Brooks"}]
+check(M.match_contact("Ramiro Salazar", CON)["id"] == 21 and M.match_contact("Ramirro Salasar", CON)["id"] == 21, "haydovchi (o'rta ism, imlo)")
+check(M.match_contact("Juan Perez", CON) is None and M.match_contact("Juan Perez", CON, 24)["id"] == 24
+      and M.match_contact("LaDarnell Brooks", CON) is None and M.match_contact("Juan", CON) is None, "noaniq ism — bo'sh qoladi")
 LAB = [{"id": 31, "name": "Owner of the truck"}, {"id": 32, "name": "Company"}, {"id": 33, "name": "Driver"}]
 f, n, s = M.match_labels("Company($38.60), Owner of th truck($42.50)", LAB)
-check([x["id"] for x in f] == [32, 31] and not n and M.match_labels("Reynaldo Suarez", LAB, ["Reynaldo Suarez"])[0][0]["id"] == 33
-      and M.match_labels("Geovanys Pena", LAB)[1] == ["Geovanys Pena"], "Responsible -> label(lar)")
+check([x["id"] for x in f] == [32, 31] and not n and M.match_labels("Ramiro Salazar", LAB, ["Ramiro Salazar"])[0][0]["id"] == 33
+      and M.match_labels("Gustavo Rivas", LAB)[1] == ["Gustavo Rivas"], "Responsible -> label(lar)")
 VEN = [{"id": 41, "name": "Tread Source Commercial Tires & Service", "postal_code": "75042", "phone": "(469) 268-7464", "service": True},
        {"id": 42, "name": "TA Truck Service", "postal_code": "79556", "service": True},
        {"id": 43, "name": "DB Truck & Trailer Repair", "service": True}]
@@ -160,8 +168,10 @@ class FakeClient:
 
     def __init__(self):
         self.dups = []
+        self.counts = Counter()
 
     def raw_all(self, name, params=None, max_pages=60):
+        self.counts[name] += 1
         return {"list_work_order_statuses": [{"id": 8, "name": "Open"}, {"id": 9, "name": "Completed", "completed": True}],
                 "list_issue_priorities": [{"id": 5, "slug": "no-priority", "name": "No Priority"}],
                 "list_vehicles": VEH, "list_contacts": CON, "list_labels": [dict(x) for x in LAB], "list_vendors": VEN,
@@ -178,14 +188,15 @@ class FakeClient:
 
 class FakeWriter:
     def __init__(self):
-        self.calls, self.fail = [], None
+        self.calls, self.fail, self.delay = [], None, 0.0
 
     def current_user(self):
-        return {"contact_id": 77, "first_name": "Charlie", "last_name": "Pearson", "time_zone_name": "Eastern Time (US & Canada)"}
+        return {"contact_id": 77, "first_name": "Alex", "last_name": "Morgan", "time_zone_name": "Eastern Time (US & Canada)"}
 
     def create(self, op, body):
         if self.fail == op:
             raise FleetioError("Fleetio rejected the data (422): completed_at: is invalid")
+        time.sleep(self.delay)  # Fleetio javob vaqti (parallellik testi uchun)
         self.calls.append((op, body))
         return {"id": 100 + len(self.calls), "number": f"#{len(self.calls)}", "name": body.get("name"),
                 "work_order_status_name": "Completed", "vmrs_repair_priority_class": {"name": "Scheduled"}}
@@ -268,16 +279,37 @@ async def flow():
           and "Resolved" in m.text, "javob: raqam, task, summa, havola, issue holati")
 
     before = len(writer.calls)
-    m = await send(SAMPLE.replace("Unit# 3968", "Unit# 9693").replace("$ 70", "seventy"))
-    check(len(writer.calls) == before and "several vehicles" in m.text and "Amount" in m.text, "xatolar birga ko'rsatiladi, hech narsa yozilmaydi")
-    m = await send(SAMPLE.rsplit("\n\n", 1)[0])
-    check(len(writer.calls) == before and "Vendor is missing" in m.text, "ustaxona yo'q -> yaratilmaydi")
+    m = await send(SAMPLE.replace("Unit# 3968", "Unit# 9693").replace(f"Date: {DAY:%m/%d/%Y}", "Date: 13/45/2026"))
+    check(len(writer.calls) == before and "several vehicles" in m.text and "Date" in m.text, "majburiy xatolar birga ko'rsatiladi, hech narsa yozilmaydi")
     m = await send(None, file=False, text=SAMPLE)
     check(len(writer.calls) == before and "file is missing" in m.text, "faylsiz matn -> fayl so'raladi")
 
+    m = await send(SAMPLE.rsplit("\n\n", 1)[0].replace("Ref# 216117", "Ref# 5001"))
+    body = writer.calls[-1][1]
+    check([c[0] for c in writer.calls[before:]] == ["upload", "create_issue", "create_work_order"] and "vendor_id" not in body
+          and "created" in m.text and "Vendor left empty" in m.text, "ustaxona yo'q -> vendor'siz yaratiladi")
+    before = len(writer.calls)
+    m = await send(f"Unit# 3968\nDate: {DAY:%m/%d/%Y}\nRef# 5002")
+    body = writer.calls[-1][1]
+    check([c[0] for c in writer.calls[before:]] == ["upload", "create_work_order"] and "issue_ids" not in body
+          and "work_order_line_items_attributes" not in body and body["documents_attributes"][0]["file_url"] == "https://cdn.example/F1"
+          and body["vehicle_id"] == 1 and body["issued_at"] and "No issue" in m.text, "faqat Unit + Date: issue'siz, fayl work order'da")
+    before = len(writer.calls)
+    m = await send(SAMPLE.replace("$ 70", "seventy").replace("Ref# 216117", "Ref# 5003"))
+    li = writer.calls[-1][1]["work_order_line_items_attributes"]
+    check(len(li) == 1 and "subtotal" not in li[0] and "no amount" in m.text, "Amount noto'g'ri -> line item narxsiz")
+    m = await send(SAMPLE.replace("Truck tire repair", "Zzqx wobble frob").replace("Ref# 216117", "Ref# 5004"))
+    check("Which <b>service task</b>" in m.text and "No service task" in str(m.reply_markup), "task noaniq -> tugmalar + 'No service task'")
+    nobtn = m.reply_markup.inline_keyboard[-1][0].callback_data
+    before = len(writer.calls)
+    m = await press(nobtn)
+    check("created" in m.text and "work_order_line_items_attributes" not in writer.calls[-1][1], "'No service task' -> line item'siz")
+
+    before = len(writer.calls)
     client.dups = [{"id": 900, "number": "#15"}]
     m = await send(SAMPLE)
-    check(len(writer.calls) == before and "already has invoice number" in m.text, "takror invoys raqami -> so'raladi")
+    check([c[0] for c in writer.calls[before:]] == ["upload"] and "already has invoice number" in m.text,
+          "takror invoys raqami -> so'raladi (fayl oldindan yuklangan, boshqa hech narsa yaratilmagan)")
     client.dups = []
     writer.fail = "create_work_order"
     token = m.reply_markup.inline_keyboard[0][0].callback_data
@@ -289,21 +321,80 @@ async def flow():
     m = await press(m.reply_markup.inline_keyboard[0][0].callback_data)
     check("created" in m.text and sum(1 for c in writer.calls if c[0] == "create_issue") == issues
           and [c[0] for c in writer.calls[-1:]] == ["create_work_order"], "Retry: issue qayta yaratilmaydi")
+    check([c[0] for c in writer.calls[before:]].count("upload") == 1, "oldindan yuklangan fayl qayta yuklanmaydi")
 
     before = len(writer.calls)
     new = (SAMPLE.replace("Unit# 3968", "Unit: 3968\nTrailer: 560542").replace("Truck tire repair", "Trailer tire repair")
            .replace("Paid with EFS", "Paid with EFS, RC")
-           .replace("Owner of the truck", "Geovanys Pena").replace("Ref# 216117", "Ref: 77")
+           .replace("Owner of the truck", "Gustavo Rivas").replace("Ref# 216117", "Ref: 77")
            .replace("Tread Source Commercial Tires & Service", "Brand New Tire Shop").replace("75042", "75001").replace("+14692687464", ""))
     m = await send(new)
     ops = [c[0] for c in writer.calls[before:]]
-    check(ops == ["create_vendor", "create_label", "upload", "create_issue", "create_work_order"], "yangi vendor + yangi label yaratiladi")
-    vend, body = writer.calls[before][1], writer.calls[-1][1]
+    check(ops == ["upload", "create_vendor", "create_label", "create_issue", "create_work_order"],
+          "yangi vendor + yangi label yaratiladi (fayl reja bilan bir vaqtda yuklangan)")
+    vend, body = writer.calls[before + 1][1], writer.calls[-1][1]
     check(vend == {"name": "Brand New Tire Shop", "service": True, "street_address": "1305 S Shiloh Rd", "city": "Garland",
                    "region": "Texas", "postal_code": "75001", "country": "US"}, "yangi vendor maydonlari")
     check(body["vehicle_id"] == 4 and body["vmrs_repair_priority_class_id"] == 3
           and body["starting_meter_entry_attributes"] == {"value": 0, "void": True}, "treyler ishi -> treylerga, RC -> Emergency, void meter")
 
+    print("5) Tezlik: parallel invoyslar, fon kesh")
+    client.counts.clear()
+    before = len(writer.calls)
+    m = await send(SAMPLE.replace("Ref# 216117", "Ref# 6001"))
+    check("created" in m.text and not client.counts["list_vendors"] and not client.counts["list_vehicles"],
+          "kesh issiq: invoys paytida ro'yxatlar Fleetio'dan qayta olinmaydi")
+    writer.delay = 0.4
+    two = [SAMPLE.replace("Ref# 216117", f"Ref# 70{i}").replace("Tread Source Commercial Tires & Service", "Twin Shop Tires")
+           .replace("75042", "75002").replace("+14692687464", "") for i in (1, 2)]
+    before = len(writer.calls)
+    t0 = time.monotonic()
+    await asyncio.gather(send(two[0]), send(two[1]))
+    took = time.monotonic() - t0
+    ops = [c[0] for c in writer.calls[before:]]
+    wos = [c[1] for c in writer.calls[before:] if c[0] == "create_work_order"]
+    check(ops.count("create_vendor") == 1 and len(wos) == 2 and wos[0]["vendor_id"] == wos[1]["vendor_id"],
+          "bir vaqtda kelgan 2 invoys: yangi vendor faqat bir marta yaratiladi, ikkalasi o'shanga")
+    # navbat bilan bo'lsa: 1-si vendor+issue+WO (1.2 s), keyin 2-si issue+WO (0.8 s) = 2.0 s; parallel ~1.2 s
+    check(took < 1.7, f"2 invoys parallel ishlandi ({took:.1f} s)")
+    writer.delay = 0.0
+    for _ in range(workorders.SLOW_REFRESH_EVERY):
+        svc.ref.refresh()
+    check(client.counts["list_vehicles"] == workorders.SLOW_REFRESH_EVERY and client.counts["list_contacts"] == 1,
+          "fon yangilash: mashinalar har safar, kontaktlar 6 safarda bir")
+
 
 asyncio.run(flow())
+
+
+async def llm_parallel():
+    """Service task LLM'i reja (Fleetio tekshiruvlari) bilan bir vaqtda ishlaydi va natijasi ishlatiladi."""
+    client, writer = FakeClient(), FakeWriter()
+    book_task = M.TaskBook(json.loads((workorders.TASKS_FILE).read_text(encoding="utf-8"))["tasks"])
+    tire = next(t for t in book_task.by_id.values() if t["name"] == "Tire Repair (s)")
+    started = []
+
+    async def fake_chat(messages, **kw):
+        started.append(time.monotonic())
+        await asyncio.sleep(0.3)
+        content = json.dumps({"task_id": tire["id"], "confidence": "high", "alternatives": []})
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))])
+
+    svc = WorkOrders(client, writer, llm_chat=fake_chat, ledger=Ledger(tmp / "log2.json"))
+    real_plan_sync = svc._plan_sync
+
+    def slow_plan_sync(inv):
+        time.sleep(0.3)  # Fleetio tekshiruvlari
+        return real_plan_sync(inv)
+
+    svc._plan_sync = slow_plan_sync
+    svc.ref.book()  # task katalogi fayldan bir marta o'qiladi (botda ishga tushganda) — o'lchovga kirmasin
+    t0 = time.monotonic()
+    plan = await svc.plan(parse_invoice(SAMPLE.replace("Truck tire repair", "Zzqx wobble frob tire fix"), today=dt.date.today()))
+    took = time.monotonic() - t0
+    check(plan.task and plan.task["id"] == tire["id"] and plan.task_how == "ai", "LLM tanlagan task rejaga tushdi")
+    check(started and started[0] - t0 < 0.1 and took < 0.55, f"LLM reja bilan parallel ({took:.2f} s, ketma-ket 0.6+ s)")
+
+
+asyncio.run(llm_parallel())
 print(f"\nHammasi o'tdi: {ok} ta tekshiruv ✅")

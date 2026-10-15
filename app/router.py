@@ -133,7 +133,7 @@ class Router:
         unit, rest = self._find_unit(toks)
         if unit and _only(rest, _CARD_EXTRA):
             return quick.unit_lookup(self.sql, unit)
-        # 2) haydovchi ismi ("Quentin Brownlee qaysi mashinada")
+        # 2) haydovchi ismi ("John Smith qaysi mashinada")
         name, rest = self._find_driver(toks)
         if name and _only(rest, _CARD_EXTRA):
             rep = quick.driver_lookup(self.sql, name)

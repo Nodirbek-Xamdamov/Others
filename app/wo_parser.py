@@ -3,7 +3,7 @@
 Kutilgan ko'rinish (kalitlar katta-kichik harfga befarq, tartib erkin, oxirida ustaxona bloki):
 
     Unit# 3968
-    Driver: Reynaldo Suarez
+    Driver: John Smith
     Date: 10/05/2026
     Amount: $ 70
     For: Truck tire repair
@@ -116,6 +116,7 @@ class Invoice:
     description: str = ""      # ustaxona blokisiz matn — work order "Description"iga ketadi
     emergency: bool = False
     problems: list[str] = field(default_factory=list)   # to'ldirilmasa work order yaratilmaydi
+    warnings: list[str] = field(default_factory=list)   # ixtiyoriy maydon yo'q/noto'g'ri — bo'sh qoldiriladi
 
     @property
     def ok(self) -> bool:
@@ -263,7 +264,8 @@ def _looks_like_vendor(lines: list[str]) -> bool:
 
 
 def looks_like_invoice(text: str | None) -> bool:
-    """Matn invoys formatidami: unit/trailer, date, amount, for kalitlaridan kamida 3 tasi bor."""
+    """Matn invoys formatidami: unit/trailer, date, amount, for kalitlaridan kamida 3 tasi yoki majburiy ikkitasi
+    (unit va date) bor."""
     if not text:
         return False
     found = set()
@@ -271,7 +273,7 @@ def looks_like_invoice(text: str | None) -> bool:
         hit = _match_key(_clean(raw))
         if hit:
             found.add({"trailer": "unit", "total": "amount"}.get(hit[0], hit[0]))
-    return len(found & {"unit", "date", "amount", "for"}) >= 3
+    return len(found & {"unit", "date", "amount", "for"}) >= 3 or {"unit", "date"} <= found
 
 
 def split_names(s: str) -> list[str]:
@@ -367,7 +369,7 @@ def parse_invoice(text: str, today: dt.date | None = None) -> Invoice:
     inv.description = "\n".join(x for x in lines if x and x not in vset)
     inv.emergency = bool(_EMERGENCY.search(" ".join([inv.purpose, inv.note])))
 
-    # ---- majburiy maydonlar
+    # ---- majburiy maydonlar (Fleetio'da ham majburiy: Vehicle va Issue Date); qolganlari bo'lmasa bo'sh qoladi
     if not inv.unit and not inv.trailer:
         inv.problems.append("Unit number is missing (line <code>Unit# 1234</code>).")
     if not inv.date_raw:
@@ -379,11 +381,11 @@ def parse_invoice(text: str, today: dt.date | None = None) -> Invoice:
     elif inv.date < today - dt.timedelta(days=730):
         inv.problems.append(f"Date <code>{_esc(inv.date_raw)}</code> is more than 2 years ago — check the year.")
     if not inv.amount_raw:
-        inv.problems.append("Amount is missing (line <code>Amount: $ 70</code>).")
+        inv.warnings.append("No Amount in the message — the line item has no cost.")
     elif inv.amount is None:
-        inv.problems.append(f"Amount <code>{_esc(inv.amount_raw)}</code> is not a single valid number.")
+        inv.warnings.append(f"Amount <code>{_esc(inv.amount_raw)}</code> is not a single valid number — the line item has no cost.")
     if not inv.purpose:
-        inv.problems.append("<code>For:</code> line is missing (what was done).")
+        inv.warnings.append("No <code>For:</code> line — no issue and no service task; the file is attached to the work order.")
     return inv
 
 
